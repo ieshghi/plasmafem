@@ -36,7 +36,10 @@ PROGRAM fem
 		end do
 		q = q+9
 	end do	
-	
+
+	do i = 1,N
+		f(i)=0
+	end do		
 	
 	q = 1
 	do i = 1,NT !loop through triangles to add entries into the vals vector, and build the f vector
@@ -100,8 +103,10 @@ PROGRAM fem
 		end if
 	end do
 	
-	allocate(ja(k),arr(k)) !this creates arrays of the right size
-	do i = 1,size(row2)-1
+	allocate(ja(k),arr(k)) !the points which were set to 0 in col2 are a waste of space and irrelevant to the calculation, so we need our final arrays not to include them. So they should be this size
+	
+	
+	do i = 1,size(row2)-1 !this loop puts row2 into an ordered format, so ia can later be in compressed sparse row (CSR) format. NEEDS TO BE CHECKED FOR BUGS
 		if (row2(i) > row2(i+1)) then
 			j = row2(i)
 			row2(i) = row2(i+1)
@@ -114,9 +119,11 @@ PROGRAM fem
 			val2(i+1) = temp
 		end if
 	end do
+	
+	
 	ia(1)=1
 	j=2
-	do i = 2,N
+	do i = 2,N !copies over the information from row2, into the correct CSR format for PARDISO
 		if (row2(i)>row2(i-1)) then
 			ia(j) = i
 			j=j+1
@@ -124,7 +131,7 @@ PROGRAM fem
 	end do
 	
 	j=1
-	do i = 1,size(col2)
+	do i = 1,size(col2) !makes arr and ja, the arrays that will be interacting with PARDISO. They mustn't have the redundant spaces that were set to zero in col2
 		if(col2(i)/=0) then
 			arr(j) = val2(i)
 			ja(j) = col2(i)
@@ -141,7 +148,7 @@ PROGRAM fem
 	phase = 22
 	write(*,*) error	
 
-	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
+	!CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
 	
 !	iparm(8) = 1
 !	phase = 33
