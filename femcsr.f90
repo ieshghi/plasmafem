@@ -36,7 +36,9 @@ PROGRAM fem
 		end do
 		q = q+9
 	end do
-	
+	do i = 1,N
+		f(i)=0
+	end do	
 	q = 1
 	do i = 1,NT !loop through triangles to add entries into the vals vector, and build the f vector
 		do j =1,3 !We build the matrix with x1,y1,x2,y2,...
@@ -55,9 +57,6 @@ PROGRAM fem
 		f(t(i,1)) = f(t(i,1)) + det*0.5*foo(p(t(i,1),1),p(t(i,1),2))*0.5 !Here, we add the result of the convolution of the basis function with the right hand side of the Poisson equation, which gives us the right hand side vector in the finite element equation.
 		f(t(i,2)) = f(t(i,2)) + det*0.5*foo(p(t(i,2),1),p(t(i,2),2))*0.5
 		f(t(i,3)) = f(t(i,3)) + det*0.5*foo(p(t(i,3),1),p(t(i,3),2))*0.5
-		if(isnan(f(t(i,1)))  .or. isnan(f(t(i,2))) .or. isnan(f(t(i,3)))) then
-				write(*,*) i
-		end if
 	end do
 
 	do i=1,NB !This loops through the b array and sets the corresponding row of L to all zeros except for the L(b(i),b(i)) spot. It also sets the f(b(i) cell to zero. This allows for correct evaluation of the edges.
