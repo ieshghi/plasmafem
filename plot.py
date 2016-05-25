@@ -8,8 +8,8 @@ def plotting():
 	t = np.loadtxt('t.dat')
 	p = np.loadtxt('p.dat')
 	fu = np.loadtxt('fu.dat')
-	ia = np.loadtxt('ia.dat')
-	ja = np.loadtxt('ja.dat')
+	ia = np.loadtxt('ia.dat') -1
+	ja = np.loadtxt('ja.dat') -1
 	arr = np.loadtxt('arr.dat')
 
 	M = spr.csr_matrix((arr,(ia,ja)))
