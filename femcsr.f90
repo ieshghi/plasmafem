@@ -90,6 +90,7 @@ PROGRAM fem
 		end if
 	end do
 	
+	
 	!Now PARDISO comes in. Col2 is equivalent to the JA array, val2 is the A array. We need to rewrite row2 to be like IA, since it is not currently in compressed sparse row format. (or maybe not, this version does no such rearrangement. For extra compression, go to fempardiso.f90)
 
 	k=0
@@ -111,11 +112,6 @@ PROGRAM fem
 		end if
 	end do
 
-	do i = 1,N
-		fu(i) = 1
-	end do	
-		
-	
 	open(1,file='ia.dat',status='new') 
 		  do i = 1,size(ia)
 			write(1,*) ia(i)
@@ -149,73 +145,5 @@ PROGRAM fem
 			write(6,*) t(i,1),t(i,2),t(i,3)
 		  end do
 		  close(6)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
-	phase = 11
-	msglvl = 1
-	iparm(33) = 1
-	
-	!CALL PARDISO_CHKVEC(N,N,f, ERROR)
-	!CALL PARDISO_CHKMATRIX(MTYPE,N,ARR,IA,JA,ERROR)
-	!CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, N, IPARM, MSGLVL, f, X, ERROR, DPARM)
-	
-!	open(1,file='ia.dat',status='new') 
-!		  do i = 1,size(ia)
-!			write(1,*) ia(i)
-!		  end do 
-!		  close(1)
-!		  
-!	open(2,file='ja.dat',status='new') 
-!		  do i = 1,size(ja)
-!			write(2,*) ja(i)
-!		  end do
-!		  close(2)
-!	
-!	  open(3,file='fu.dat',status='new') 
-!		  do i = 1,size(f)
-!			write(3,*) f(i)
-!		  end do
-!		  close(3)
-!	
-!	  open(3,file='arr.dat',status='new') 
-!		  do i = 1,size(arr)
-!			write(3,*) arr(i)
-!		  end do
-!		  close(3)
-	
-	!phase = 22
-	!!write(*,*) error	
-
-!	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
-	
-!	iparm(8) = 1
-!	phase = 33
-	
-!	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
-	
-!!	phase = -22
-		
-!	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
-
-!	phase = -1
-	
-	!CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA,PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
 	
 	END PROGRAM fem
