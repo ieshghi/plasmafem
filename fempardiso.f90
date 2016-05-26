@@ -6,14 +6,16 @@ PROGRAM fem
 	integer, dimension(:),allocatable::b,row1,col1,row2,col2,x,ia,ja,perm,redun
 	real, dimension(:,:),allocatable::p !array of points, array of triangle vertices, and big L finite element array
 	real, dimension(:),allocatable::f,val1,val2,arr !array of vertices along edge, array of <integral>g_i*f:wq:
-	integer, dimension(64):: pt,iparm,dparm
+	integer, dimension(64):: pt,iparm
+	real, dimension(64):: dparm
 	real, dimension(3,3)::A !We will use this array in the process of finding equations of planes
 	real::det,temp !determinants of matrices, values to insert in sparse matrix
 	
-	mtype = 11
-	solver=10
 	call pardisoinit(pt,mtype,solver,iparm,dparm,error) !Initialise PARDISO
 	iparm(3) = 1
+	iparm(1)=0
+	mtype = 11
+	solver=0
 	
 	write(*,*) 'Nx = ' !How many elements along x?
 	read(*,*) nx
@@ -105,32 +107,34 @@ PROGRAM fem
 	
 	allocate(ja(k),arr(k)) !the points which were set to 0 in col2 are a waste of space and irrelevant to the calculation, so we need our final arrays not to include them. So they should be this size
 	
-	
-	do i = 1,size(row2)-1 !this loop puts row2 into an ordered format, so ia can later be in compressed sparse row (CSR) format. NEEDS TO BE CHECKED FOR BUGS
-		if (row2(i) > row2(i+1)) then
-			j = row2(i)
-			row2(i) = row2(i+1)
-			row2(i+1) = j
-			j = col2(i)
-			col2(i) = col2(i+1)
-			col2(i+1) = j
-			temp = val2(i)
-			val2(i) = val2(i+1)
-			val2(i+1) = temp
-		end if
+	do i = 1,size(row2)-1 !this loop puts row2 into an ordered format, so ia can later be in compressed sparse row (CSR) format.
+		do k = i+1,size(row2)-1
+				if (row2(i) > row2(k) .and. row2(i)/=0 .and. row2(k) /=0) then
+				j = row2(i)
+				row2(i) = row2(k)
+				row2(k) = j
+				j = col2(i)
+				col2(i) = col2(k)
+				col2(k) = j
+				temp = val2(i)
+				val2(i) = val2(k)
+				val2(k) = temp
+			end if
+		end do
 	end do
 	
-	
+
 	ia(1)=1
 	j=2
-	do i = 2,N !copies over the information from row2, into the correct CSR format for PARDISO
+	do i = 2,size(row2) !copies over the information from row2, into the correct CSR format for PARDISO
 		if (row2(i)>row2(i-1)) then
 			ia(j) = i
 			j=j+1
 		end if
 	end do
-	
 	j=1
+	ia(N+1) = ia(N)+1
+		
 	do i = 1,size(col2) !makes arr and ja, the arrays that will be interacting with PARDISO. They mustn't have the redundant spaces that were set to zero in col2
 		if(col2(i)/=0) then
 			arr(j) = val2(i)
@@ -138,29 +142,39 @@ PROGRAM fem
 			j=j+1
 		end if
 	end do
-	
+	do i = 1,size(ia)-1 !makes ja strictly increasing in any given row
+		do j = ia(i),ia(i+1)-1
+			do q = j,ia(i+1)-1
+				if (ja(j)>ja(q))then
+						k = ja(j)
+						ja(j) = ja(q)
+						ja(q) = k
+				end if
+			end do
+		end do
+	end do
 	phase = 11
 	msglvl = 1
-	iparm(33) = 1
-	
-	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, N, IPARM, MSGLVL, f, X, ERROR, DPARM)
+	nrhs = 1	
+	CALL PARDISO_CHKMATRIX(MTYPE,N,ARR,IA,JA,ERROR)
+	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, f, X, ERROR, DPARM)
+		
 	
 	phase = 22
-	write(*,*) error	
 
-	!CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
+	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, f, X, ERROR, DPARM)
 	
-!	iparm(8) = 1
-!	phase = 33
+	iparm(8) = 1
+	phase = 33
 	
-!	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
+!	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, f, X, ERROR, DPARM)
 	
 !	phase = -22
 		
-!	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
+!	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, f, X, ERROR, DPARM)
 
 !	phase = -1
 	
-	!CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA,PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
-	
+	!CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA,PERM, NRHS, IPARM, MSGLVL, f, X, ERROR, DPARM)
+
 	END PROGRAM fem
