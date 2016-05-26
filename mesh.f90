@@ -7,7 +7,6 @@ MODULE mesh
 		real,intent(in):: x,y
 		real:: foo
 		
-		
 		foo = sin(3.14*x)+sin(3.14*y)
 		END FUNCTION foo
 			
