@@ -11,10 +11,20 @@ PROGRAM fem
 	real, dimension(3,3)::A !We will use this array in the process of finding equations of planes
 	real::det,temp !determinants of matrices, values to insert in sparse matrix
 	
-	call pardisoinit(pt,mtype,solver,iparm,dparm,error) !Initialise PARDISO
-	iparm(3) = 4
 	iparm(1)=0
 	mtype = 11
+	call pardisoinit(pt,mtype,solver,iparm,dparm,error) !Initialise PARDISO
+	iparm(1)=0
+	iparm(2)=2
+	iparm(6)=1 !write results in fu, not in X. For some reason, this makes the whole thing work
+	iparm(10)=13
+	iparm(11)=1
+	iparm(13)=1
+	iparm(19)=0
+	iparm(21)=1
+	iparm(52)=1
+	mtype = 11
+	iparm(3) = 1
 	solver=0
 	
 	write(*,*) 'Nx = ' !How many elements along x?
@@ -157,16 +167,11 @@ PROGRAM fem
 		end do
 	end do
 
-	write(*,*) maxval(arr),maxval(fu),minval(arr),minval(fu)
-	
 	ia(N+1) = ia(N)+1
 	phase = 13 !13 allows us to go through all phases of analysis, factorization and solving at once.
 	msglvl = 1 !0: not verbose ; 1: verbose output
 	nrhs = 1 !We never want to solve more than one right hand side
-!	CALL PARDISO_CHKMATRIX(MTYPE,N,ARR,IA,JA,ERROR)
-!	CALL PARDISO_CHKVEC(N,NRHS,fu,ERROR)
-!	CALL PARDISO_PRINTSTATS(MTYPE, N, ARR, IA, JA, NRHS, fu, ERROR)
-!	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, fu, X, ERROR, DPARM)
+	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, fu, X, ERROR, DPARM)
 	
 	
 	open(1,file='./files/p.dat') !write stuff to file before memory release, so that it can be plotted in python
@@ -181,7 +186,7 @@ PROGRAM fem
 		  close(2)
 	open(3,file='./files/fu.dat') 
 		  do i = 1,N
-			write(3,*) x(i)
+			write(3,*) fu(i)
 		  end do
 		  close(3)
 	
