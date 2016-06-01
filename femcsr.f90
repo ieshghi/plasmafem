@@ -112,35 +112,35 @@ PROGRAM fem
 		end if
 	end do
 
-	open(1,file='ia.dat',status='new') 
+	open(1,file='./files/ia.dat') 
 		  do i = 1,size(ia)
 			write(1,*) ia(i)
   			end do 
 		  close(1)
 		  
-	open(2,file='ja.dat',status='new') 
+	open(2,file='./files/ja.dat') 
 		  do i = 1,size(ja)
 			write(2,*) ja(i)
 		  end do
 		  close(2)
 	
-	open(3,file='fu.dat',status='new') 
+	open(3,file='./files/fu.dat') 
 		  do i = 1,N
 			write(3,*) f(i)
 		  end do
 		  close(3)
 
-	open(4,file='arr.dat',status='new') 
+	open(4,file='./files/arr.dat') 
 		  do i = 1,size(arr)
 			write(4,*) arr(i)
 		  end do
 		  close(4)
-	open(3,file='p.dat',status='new') 
+	open(3,file='./files/p.dat')
 		  do i = 1,NV
 			write(3,*) p(i,1),p(i,2)
 		  end do
 		  close(5)
-	open(6,file='t.dat',status='new') 
+	open(6,file='./files/t.dat') 
 		  do i = 1,NT
 			write(6,*) t(i,1),t(i,2),t(i,3)
 		  end do

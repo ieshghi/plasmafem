@@ -164,30 +164,30 @@ PROGRAM fem
 	msglvl = 1 !0: not verbose ; 1: verbose output
 	nrhs = 1 !We never want to solve more than one right hand side
 !	CALL PARDISO_CHKMATRIX(MTYPE,N,ARR,IA,JA,ERROR)
-	CALL PARDISO_CHKVEC(N,NRHS,fu,ERROR)
+!	CALL PARDISO_CHKVEC(N,NRHS,fu,ERROR)
 !	CALL PARDISO_PRINTSTATS(MTYPE, N, ARR, IA, JA, NRHS, fu, ERROR)
 !	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, fu, X, ERROR, DPARM)
 	
 	
-	open(1,file='p.dat',status='new') !write stuff to file before memory release, so that it can be plotted in python
+	open(1,file='./files/p.dat') !write stuff to file before memory release, so that it can be plotted in python
 		  do i = 1,NV
 			write(1,*) p(i,1),p(i,2)
 		  end do
 		  close(1)
-	open(2,file='t.dat',status='new') 
+	open(2,file='./files/t.dat') 
 		  do i = 1,NT
 			write(2,*) t(i,1),t(i,2),t(i,3)
 		  end do
 		  close(2)
-	open(3,file='fu.dat',status='new') 
+	open(3,file='./files/fu.dat') 
 		  do i = 1,N
 			write(3,*) x(i)
 		  end do
 		  close(3)
 	
 		  
-!	phase = -1 !Release all memory
+	phase = -1 !Release all memory
 	
-	!CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, fu, X, ERROR, DPARM)
+	CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, ARR, IA, JA, PERM, NRHS, IPARM, MSGLVL, fu, X, ERROR, DPARM)
 
 	END PROGRAM fem
