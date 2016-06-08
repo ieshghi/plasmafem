@@ -1,11 +1,11 @@
 PROGRAM fem
 	USE mesh
 	implicit none
-	integer(kind=4)::nx,ny,N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
+	integer(kind=8)::nx,ny,N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
 	integer, dimension(:,:),allocatable::t
-	integer(kind=4), dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
+	integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
 	real, dimension(:,:),allocatable::p !array of points, array of triangle vertices, and big L finite element array
-	real(kind=8), dimension(:),allocatable::fu,val1,val2,arr,x !array of vertices along edge, array of <integral>g_i*f:wq:
+	real(kind=8), dimension(:),allocatable::fu,val1,val2,arr,x,x_exact !array of vertices along edge, array of <integral>g_i*f:wq:
 	real, dimension(3,3)::A !We will use this array in the process of finding equations of planes
 	real::det,temp !determinants of matrices, values to insert in sparse matrix
 	
@@ -21,7 +21,7 @@ PROGRAM fem
 	NT = size(t(:,1))
 	NV = size(p(:,1))
 	NB = size(b) 
-	allocate(val1(NT*9),col1(NT*9),row1(NT*9),val2(NT*9),col2(NT*9),row2(NT*9),x(N))! Allocate sizes of arrays
+	allocate(val1(NT*9),col1(NT*9),row1(NT*9),val2(NT*9),col2(NT*9),row2(NT*9),x(N),x_exact(N))! Allocate sizes of arrays
 	q = 1
 	do i = 1,NT !Loop to build the row and col vectors
 		do j = 0,8
@@ -71,7 +71,7 @@ PROGRAM fem
 	end do
 	
 	j=1
-	do i=1,size(col1) !Reprocess information in row1 and col1, to compress them.
+	do i=1,size(col1) !Reprocess information in row1 and col1, to compress them. Redundancies are set to zero, to be ignored later.
 		if (col1(i) /= 0 .and. row1(i) /= 0) then
 			col2(j) = col1(i)
 			row2(j) = row1(i)
@@ -88,10 +88,8 @@ PROGRAM fem
 		end if
 	end do
 	
-	!Now PARDISO comes in. Col2 is equivalent to the JA array, val2 is the A array. We need to rewrite row2 to be like IA, since it is not currently in compressed sparse row format.
-
-	k=0
-	do i = 1,size(col2)  !find size of nonzero parts of the row and column arrays, to optimise space usage
+	k=0	
+	do i = 1,size(col2)  !find size of nonzero parts of the row and column arrays
 		if(col2(i) /= 0) then
 				k=k+1
 		end if
@@ -108,12 +106,26 @@ PROGRAM fem
 			j=j+1
 		end if
 	end do
-	
 	do i = 1,N !We want X to have an estimate of the solution to begin with... I start with 0, for lack of a better idea
 		x(i) = 0
 	end do
+	temp = 1e-6
+	i = nx/2
+	q = nx/2
+	call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
 	
-	call mgmres_st(N,k,ia,ja,arr,x,fu,min(N,10),20,1e-6,1e-6)
+	do i = 1,N
+		x(i) = x(i)*(2.0/3.0)
+	end do
+	
+	do i = 1,N
+		x_exact(i) = exact(p(i,1),p(i,2))
+	end do
+
+	open(1,file='./files/conv.dat',access='append')
+		write(1,*) maxval(abs(x-x_exact))
+	close(1)
+
 	
 	open(1,file='./files/p.dat') !write stuff to file before memory release, so that it can be plotted in python
 		  do i = 1,NV
@@ -125,9 +137,34 @@ PROGRAM fem
 			write(2,*) t(i,1),t(i,2),t(i,3)
 		  end do
 		  close(2)
-	open(3,file='./files/fu.dat') 
+	open(3,file='./files/x.dat') 
 		  do i = 1,N
 			write(3,*) x(i)
+			end do
+		  close(3)
+	open(3,file='./files/exact.dat') 
+		  do i = 1,N
+			write(3,*) x_exact(i)
+			end do
+		  close(3)
+	open(3,file='./files/fu.dat') 
+		  do i = 1,N
+			write(3,*) fu(i)
+			end do
+		  close(3)
+	open(3,file='./files/ia.dat') 
+		  do i = 1,size(ia)
+			write(3,*) ia(i)
+			end do
+		  close(3)
+	open(3,file='./files/ja.dat') 
+		  do i = 1,size(ja)
+			write(3,*) ja(i)
+			end do
+		  close(3)
+	open(3,file='./files/arr.dat') 
+		  do i = 1,size(arr)
+			write(3,*) arr(i)
 			end do
 		  close(3)
 

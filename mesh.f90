@@ -2,18 +2,27 @@ MODULE mesh
 	implicit none
 
 	CONTAINS
+	FUNCTION exact(x,y) !known solution to Poisson equation (for debugging purposes)
+		implicit none
+		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
+		real,intent(in):: x,y
+		real exact
+
+		exact = 0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
+		END FUNCTION exact	
 	FUNCTION foo(x,y) !right side of the equation
 		implicit none
+		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
 		real,intent(in):: x,y
 		real:: foo
 		
-		foo = sin(3.14*x)+sin(3.14*y)
+		foo = sin(pi*x)*sin(pi*y)
 		END FUNCTION foo
 			
 	FUNCTION  linspace(a,b,n) !equivalent of python linspace
         implicit none
         real, intent(in):: a,b !start and endpoint
-        integer, intent(in):: n !number of elements
+        integer(kind=8), intent(in):: n !number of elements
         integer:: i ! loop variable
         real:: dx, linspace(n)
         dx = (b-a)/(n-1) !spacing between x's
@@ -41,7 +50,7 @@ MODULE mesh
 		integer,dimension(:,:),allocatable::t
 		real,dimension(:,:),allocatable::p
 		integer,dimension(:),allocatable::b
-		integer::nx,ny,i,j !i,j are loop variables
+		integer(kind=8)::nx,ny,i,j !i,j are loop variables
 		real,dimension(nx)::x !arrays of x and y positions
 		real,dimension(ny)::y
 		real::w,z
