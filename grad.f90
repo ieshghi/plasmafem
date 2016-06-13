@@ -5,9 +5,9 @@ PROGRAM fem
 	integer, dimension(:,:),allocatable::t
 	integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
 	real, dimension(:,:),allocatable::p !array of points, array of triangle vertices, and big L finite element array
-	real(kind=8), dimension(:),allocatable::fu,val1,val2,arr,x,x_exact !array of vertices along edge, array of <integral>g_i*f:wq:
+	real(kind=8), dimension(:),allocatable::fu,val1,val2,x,x_exact,arr !array of vertices along edge, array of <integral>g_i*f
 	real, dimension(3,3)::A !We will use this array in the process of finding equations of planes
-	real::det,temp !determinants of matrices, values to insert in sparse matrix
+	real::det,temp,centx,centy !determinants of matrices, values to insert in sparse matrix
 	
 	write(*,*) 'Nx = ' !How many elements along x?
 	read(*,*) nx
@@ -36,7 +36,7 @@ PROGRAM fem
 	end do		
 	
 	q = 1
-	do i = 1,NT !loop through triangles to add entries into the vals vector, and build the f vector
+	do i = 1,NT !loop through triangles to add entries into the vals vector, thus building the left hand side matrix
 		do j =1,3 !We build the array with x1,y1,x2,y2,...
 			A(j,1) = (p(t(i,j),1))
 			A(j,2) = (p(t(i,j),2))
@@ -45,16 +45,23 @@ PROGRAM fem
 		
 		det = abs(threedet(A)) !This computes the determinant of that matrix, which is used to compute the area of the triangle in question
 		call threeinv(A)
-
 		
+		centx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !x-coord of centroid of triangle
+		centy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0) !y-coord of centroid of triangle
 		do j=0,8
-			val1(q+j) = (A(1,j/3+1)*A(1,modulo(j,3)+1)+A(2,j/3+1)*A(2,modulo(j,3)+1))*det*0.5
+			val1(q+j) = (-1)*(A(1,j/3+1)*A(1,modulo(j,3)+1)+A(2,j/3+1)*A(2,modulo(j,3)+1))*det*0.5/(centx*centx) !evaluating the integral of the basis functions, multiplied by 1/x^2 (grad-schafranov)
 		end do
 		q = q+9
+	end do
+
+	do i = 1,NT !build right hand side, looping over all triangles
+		centx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !x-coord of centroid of triangle
+		centy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0) !y-coord of centroid of triangle
+		temp = foo(centx,centy)/(centx*centx) !2d midpoint rule, multiplied by 1/x^2 (grad-schafranov)
 		
-		fu(t(i,1)) = fu(t(i,1)) + det*0.5*foo(p(t(i,1),1),p(t(i,1),2))*0.5 !Here, we add the result of the convolution of the basis function with the right hand side of the Poisson equation, which gives us the right hand side vector in the finite element equation.
-		fu(t(i,2)) = fu(t(i,2)) + det*0.5*foo(p(t(i,2),1),p(t(i,2),2))*0.5
-		fu(t(i,3)) = fu(t(i,3)) + det*0.5*foo(p(t(i,3),1),p(t(i,3),2))*0.5
+		fu(t(i,1)) = fu(t(i,1)) + det*0.5*temp/3.0 !Here, we add the result of the convolution of the basis function with the right hand side of the Poisson equation, which gives us the right hand side vector in the finite element equation.
+		fu(t(i,2)) = fu(t(i,2)) + det*0.5*temp/3.0
+		fu(t(i,3)) = fu(t(i,3)) + det*0.5*temp/3.0
 	end do
 
 	do i=1,NB !This loops through the b array and sets the corresponding row of L to all zeros except for the L(b(i),b(i)) spot. It also sets the f(b(i) cell to zero. This allows for correct evaluation of the edges.
@@ -115,10 +122,6 @@ PROGRAM fem
 	call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
 	
 	do i = 1,N
-		x(i) = x(i)*(2.0/3.0)
-	end do
-	
-	do i = 1,N
 		x_exact(i) = exact(p(i,1),p(i,2))
 	end do
 
@@ -154,18 +157,18 @@ PROGRAM fem
 		  close(3)
 	open(3,file='./files/ia.dat') 
 		  do i = 1,size(ia)
-			write(3,*) ia(i)
-			end do
+				write(3,*) ia(i)
+		  end do
 		  close(3)
 	open(3,file='./files/ja.dat') 
 		  do i = 1,size(ja)
-			write(3,*) ja(i)
-			end do
+				write(3,*) ja(i)
+		  end do
 		  close(3)
 	open(3,file='./files/arr.dat') 
 		  do i = 1,size(arr)
-			write(3,*) arr(i)
-			end do
+				write(3,*) arr(i)
+		  end do
 		  close(3)
 
 	END PROGRAM fem
