@@ -69,8 +69,8 @@ subroutine atx_cr ( n, nz_num, ia, ja, a, x, w )
 !
   implicit none
 
-  integer ( kind = 4 ) n
-  integer ( kind = 4 ) nz_num
+  integer ( kind = 8 ) n
+  integer ( kind = 8 ) nz_num
 
   real ( kind = 8 ) a(nz_num)
   integer ( kind = 4 ) i
@@ -162,8 +162,8 @@ subroutine atx_st ( n, nz_num, ia, ja, a, x, w )
 !
   implicit none
 
-  integer ( kind = 4 ) n
-  integer ( kind = 4 ) nz_num
+  integer ( kind = 8 ) n
+  integer ( kind = 8 ) nz_num
 
   real ( kind = 8 ) a(nz_num)
   integer ( kind = 4 ) i
@@ -255,8 +255,8 @@ subroutine ax_cr ( n, nz_num, ia, ja, a, x, w )
 !
   implicit none
 
-  integer ( kind = 4 ) n
-  integer ( kind = 4 ) nz_num
+  integer ( kind = 8 ) n
+  integer ( kind = 8 ) nz_num
 
   real ( kind = 8 ) a(nz_num)
   integer ( kind = 4 ) i
@@ -348,8 +348,8 @@ subroutine ax_st ( n, nz_num, ia, ja, a, x, w )
 !
   implicit none
 
-  integer ( kind = 4 ) n
-  integer ( kind = 4 ) nz_num
+  integer ( kind = 8 ) n
+  integer ( kind = 8 ) nz_num
 
   real ( kind = 8 ) a(nz_num)
   integer ( kind = 4 ) i
@@ -419,8 +419,8 @@ subroutine diagonal_pointer_cr ( n, nz_num, ia, ja, ua )
 !
   implicit none
 
-  integer ( kind = 4 ) n
-  integer ( kind = 4 ) nz_num
+  integer ( kind = 8 ) n
+  integer ( kind = 8 ) nz_num
 
   integer ( kind = 4 ) i
   integer ( kind = 4 ) ia(n+1)
@@ -486,8 +486,8 @@ subroutine ilu_cr ( n, nz_num, ia, ja, a, ua, l )
 !
   implicit none
 
-  integer ( kind = 4 ) n
-  integer ( kind = 4 ) nz_num
+  integer ( kind = 8 ) n
+  integer ( kind = 8 ) nz_num
 
   real ( kind = 8 ) a(nz_num)
   integer ( kind = 4 ) i
@@ -611,8 +611,8 @@ subroutine lus_cr ( n, nz_num, ia, ja, l, ua, r, z )
 !
   implicit none
 
-  integer ( kind = 4 ) n
-  integer ( kind = 4 ) nz_num
+  integer ( kind = 8 ) n
+  integer ( kind = 8 ) nz_num
 
   integer ( kind = 4 ) i
   integer ( kind = 4 ) ia(n+1)
@@ -740,9 +740,9 @@ subroutine mgmres_st ( n, nz_num, ia, ja, a, x, rhs, itr_max, mr, tol_abs, &
 !
   implicit none
 
-  integer ( kind = 4 ) mr
-  integer ( kind = 4 ) n
-  integer ( kind = 4 ) nz_num
+  integer ( kind = 8 ),intent(in):: mr
+  integer ( kind = 8 ) n
+  integer ( kind = 8 ) nz_num
 
   real ( kind = 8 ) a(nz_num)
   real ( kind = 8 ) av
@@ -754,7 +754,7 @@ subroutine mgmres_st ( n, nz_num, ia, ja, a, x, rhs, itr_max, mr, tol_abs, &
   integer ( kind = 4 ) i
   integer ( kind = 4 ) ia(nz_num)
   integer ( kind = 4 ) itr
-  integer ( kind = 4 ) itr_max
+  integer ( kind = 8 ),intent(in):: itr_max
   integer ( kind = 4 ) itr_used
   integer ( kind = 4 ) j
   integer ( kind = 4 ) ja(nz_num)
@@ -1066,9 +1066,9 @@ subroutine pmgmres_ilu_cr ( n, nz_num, ia, ja, a, x, rhs, itr_max, mr, &
 !
   implicit none
 
-  integer ( kind = 4 ) mr
-  integer ( kind = 4 ) n
-  integer ( kind = 4 ) nz_num
+  integer ( kind = 8 ) mr
+  integer ( kind = 8 ) n
+  integer ( kind = 8 ) nz_num
 
   real ( kind = 8 ) a(nz_num)
   real ( kind = 8 ) av
@@ -1289,7 +1289,7 @@ subroutine r8vec_uniform_01 ( n, seed, r )
 !
   implicit none
 
-  integer ( kind = 4 ) n
+  integer ( kind = 8 ) n
 
   integer ( kind = 4 ) i
   integer ( kind = 4 ) k
@@ -1394,8 +1394,8 @@ subroutine rearrange_cr ( n, nz_num, ia, ja, a )
 !
   implicit none
 
-  integer ( kind = 4 ) n
-  integer ( kind = 4 ) nz_num
+  integer ( kind = 8 ) n
+  integer ( kind = 8 ) nz_num
 
   real ( kind = 8 ) a(nz_num)
   integer ( kind = 4 ) i
