@@ -1,15 +1,14 @@
-MODULE mesh
+MODULE meshgs
 	implicit none
 
 	CONTAINS
-	FUNCTION exact(x,y) !known solution to Poisson equation (for debugging purposes)
+	FUNCTION exact(x,y) !known solution to Grad-Shafranov equation (for debugging purposes)
 		implicit none
 		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
 		real,intent(in):: x,y
 		real exact
 
-		exact = -x*(1-x)*y*(1-y)
-		
+		exact = (x-1)*(x-2)*(y-1)*(y-2)		
 !		exact = 0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
 		END FUNCTION exact	
 	FUNCTION foo(x,y) !right side of the equation
@@ -18,7 +17,7 @@ MODULE mesh
 		real,intent(in):: x,y
 		real:: foo
 		
-		foo = 2*(x*x-x+y*y-y)
+		foo = 2*(x-1)*(x-2)+3*(y-1)*(y-2)/x 
 		
 !		foo = sin(pi*x)*sin(pi*y)
 		END FUNCTION foo
@@ -60,8 +59,8 @@ MODULE mesh
 		real::w,z
 		!w=1
 		!z=2
-		x = linspace(0.0,1.0,nx)
-		y = linspace(0.0,1.0,ny)
+		x = linspace(1.0,2.0,nx)
+		y = linspace(1.0,2.0,ny)
 
 		allocate(p(nx*ny,2),t((nx-1)*(ny-1)*2,3),b((nx+ny)*2-4)) !vertex number = nx*ny, triangle number = (nx-1)*(ny-1)*2	
 		
@@ -126,4 +125,4 @@ MODULE mesh
 			M(3,3) = i
 			M = M*(1/det)
 		END SUBROUTINE threeinv
-	END MODULE mesh
+	END MODULE meshgs

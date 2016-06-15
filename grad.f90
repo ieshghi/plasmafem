@@ -1,5 +1,5 @@
 PROGRAM fem
-	USE mesh
+	USE meshgs
 	implicit none
 	integer(kind=8)::nx,ny,N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
 	integer, dimension(:,:),allocatable::t
@@ -49,7 +49,7 @@ PROGRAM fem
 		centx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !x-coord of centroid of triangle
 		centy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0) !y-coord of centroid of triangle
 		do j=0,8
-			val1(q+j) = (-1)*(A(1,j/3+1)*A(1,modulo(j,3)+1)+A(2,j/3+1)*A(2,modulo(j,3)+1))*det*0.5/(centx*centx) !evaluating the integral of the basis functions, multiplied by 1/x^2 (grad-schafranov)
+			val1(q+j) = (-1)*(A(1,j/3+1)*A(1,modulo(j,3)+1)+A(2,j/3+1)*A(2,modulo(j,3)+1))*det*0.5/(centx) !evaluating the integral of the basis functions, multiplied by 1/x^2 (grad-schafranov)
 		end do
 		q = q+9
 	end do
@@ -57,7 +57,7 @@ PROGRAM fem
 	do i = 1,NT !build right hand side, looping over all triangles
 		centx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !x-coord of centroid of triangle
 		centy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0) !y-coord of centroid of triangle
-		temp = foo(centx,centy)/(centx*centx) !2d midpoint rule, multiplied by 1/x^2 (grad-schafranov)
+		temp = foo(centx,centy)/(centx) !2d midpoint rule, multiplied by 1/x^2 (grad-schafranov)
 		
 		fu(t(i,1)) = fu(t(i,1)) + det*0.5*temp/3.0 !Here, we add the result of the convolution of the basis function with the right hand side of the Poisson equation, which gives us the right hand side vector in the finite element equation.
 		fu(t(i,2)) = fu(t(i,2)) + det*0.5*temp/3.0
