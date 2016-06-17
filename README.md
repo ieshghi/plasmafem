@@ -1,7 +1,7 @@
 # plasmafem
 Finite element method with finite elements for solveing Poisson equation and Grad-Shafranov equation, with 2nd order errors.
 
-Currently can solve both of them on any rectangle, with Neumann boundary conditions.
+Currently can solve both of them on any rectangle, with Direchlet boundary conditions.
 
 File list:
 
