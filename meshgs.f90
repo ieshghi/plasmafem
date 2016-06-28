@@ -125,4 +125,70 @@ MODULE meshgs
 			M(3,3) = i
 			M = M*(1/det)
 		END SUBROUTINE threeinv
+	SUBROUTINE distmesh(p,t,b)
+		implicit none
+		INTEGER, PARAMETER :: maxrecs = 100000
+		INTEGER :: J, NR, ios
+		CHARACTER(LEN=100) :: inputfile
+		CHARACTER(LEN=1) :: junk 
+		integer,dimension(:,:),allocatable::t
+		real,dimension(:,:),allocatable::p
+		real,dimension(3)::temp
+		integer,dimension(:),allocatable::b
+		NR = 0
+	OPEN(UNIT=1,FILE='infiles/p.txt')
+		DO J=1,maxrecs
+			READ(1,*,IOSTAT=ios) junk
+			IF (ios /= 0) EXIT
+			IF (J == maxrecs) THEN
+				STOP
+			ENDIF
+			NR = NR + 1
+		ENDDO
+		REWIND(1)
+		ALLOCATE(p(NR,2))
+		DO J=1,NR
+			READ(1,*) p(j,1),p(j,2)
+		END DO
+		CLOSE(1)
+		NR = 0
+	OPEN(UNIT=1,FILE='infiles/t.txt')
+		DO J=1,maxrecs
+			READ(1,*,IOSTAT=ios) junk
+			IF (ios /= 0) EXIT
+			IF (J == maxrecs) THEN
+				STOP
+			ENDIF
+			NR = NR + 1
+		ENDDO
+		REWIND(1)
+		ALLOCATE(t(NR,3))
+		DO J=1,NR
+			READ(1,*) temp(1),temp(2),temp(3)
+			t(j,1) = int(temp(1))
+			t(j,2) = int(temp(2))
+			t(j,3) = int(temp(3))
+		END DO
+		CLOSE(1)
+		NR = 0
+	OPEN(UNIT=1,FILE='infiles/b.txt')
+		DO J=1,maxrecs
+			READ(1,*,IOSTAT=ios) junk
+			IF (ios /= 0) EXIT
+			IF (J == maxrecs) THEN
+				STOP
+			ENDIF
+			NR = NR + 1
+		ENDDO
+		REWIND(1)
+		ALLOCATE(b(NR))
+		DO J=1,NR
+			temp(1)=0
+			READ(1,*) temp(1)
+			b(j) = int(temp(1))
+		END DO
+		CLOSE(1)
+			
+	END SUBROUTINE distmesh
+	
 	END MODULE meshgs
