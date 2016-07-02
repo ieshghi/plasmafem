@@ -9,18 +9,22 @@ PROGRAM fem
 	real, dimension(3,3)::A !We will use this array in the process of finding equations of planes
 	real::det,temp,centx,centy !determinants of matrices, values to insert in sparse matrix
 	
-	write(*,*) 'Nx = ' !How many elements along x?
-	read(*,*) nx
-	write(*,*) 'Ny = ' !How many elements along y?
-	read(*,*) ny
-	N = nx*ny
-	allocate(fu(N))	
-	call buildmesh(nx,ny,p,t,b) !Builds p,t, and b arrays for later use. 
+!	write(*,*) 'Nx = ' !How many elements along x?
+!	read(*,*) nx
+!!	write(*,*) 'Ny = ' !How many elements along y?
+!	read(*,*) ny
+!	N = nx*ny
+!	allocate(fu(N))	
+!	call buildmesh(nx,ny,p,t,b) !Builds p,t, and b arrays for later use. 
+
+	call distmesh(p,t,b)
 	
 	NT = size(t(:,1))
 	NV = size(p(:,1))
 	NB = size(b)
 
+	N = NV !Total number of elements will be the number of vertices
+	allocate(fu(N))
 	allocate(val1(NT*9),col1(NT*9),row1(NT*9),val2(NT*9),col2(NT*9),row2(NT*9),x(N),x_exact(N))! Allocate sizes of arrays
 	q = 1
 	do i = 1,NT !Loop to build the row and col vectors

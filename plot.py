@@ -17,7 +17,7 @@ def plotting(ex = 0):
 	else:
 		ax = Axes3D(plt.gcf())
 		ax.plot_trisurf(tr,exact)
-	
+                
 	return 0
 
 def plotsolve():
