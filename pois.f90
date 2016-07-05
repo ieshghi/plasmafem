@@ -16,7 +16,6 @@ PROGRAM fem
 	N = nx*ny !Total number of elements will be obviously nx*ny
 	allocate(fu(N))
 	
-	
 	call buildmesh(nx,ny,p,t,b) !Builds p,t, and b arrays for later use. 
 	NT = size(t(:,1))
 	NV = size(p(:,1))

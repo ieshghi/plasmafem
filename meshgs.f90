@@ -5,8 +5,8 @@ MODULE meshgs
 	FUNCTION exact(x,y) !known solution to Grad-Shafranov equation (for debugging purposes)
 		implicit none
 		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
-		real,intent(in):: x,y
-		real exact
+		real(kind=8),intent(in):: x,y
+		real(kind=8) exact
 
 		exact = (x-1)*(x-2)*(y-1)*(y-2)		
 !		exact = 0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
@@ -14,8 +14,8 @@ MODULE meshgs
 	FUNCTION foo(x,y) !right side of the equation
 		implicit none
 		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
-		real,intent(in):: x,y
-		real:: foo
+		real(kind=8),intent(in):: x,y
+		real(kind=8):: foo
 		
 		foo = 2*(x-1)*(x-2)+3*(y-1)*(y-2)/x 
 		
@@ -51,7 +51,7 @@ MODULE meshgs
 	!b: (1,NE = edge number) array of points on the edge
 		implicit none
 		integer,dimension(:,:),allocatable::t
-		real,dimension(:,:),allocatable::p
+		real(kind=8),dimension(:,:),allocatable::p
 		integer,dimension(:),allocatable::b
 		integer(kind=8)::nx,ny,i,j !i,j are loop variables
 		real,dimension(nx)::x !arrays of x and y positions
@@ -132,7 +132,7 @@ MODULE meshgs
 		CHARACTER(LEN=100) :: inputfile
 		CHARACTER(LEN=1) :: junk 
 		integer,dimension(:,:),allocatable::t
-		real,dimension(:,:),allocatable::p
+		real(kind=8),dimension(:,:),allocatable::p
 		real,dimension(3)::temp
 		integer,dimension(:),allocatable::b
 		NR = 0

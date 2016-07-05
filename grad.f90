@@ -4,10 +4,10 @@ PROGRAM fem
 	integer(kind=8)::nx,ny,N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
 	integer, dimension(:,:),allocatable::t
 	integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
-	real, dimension(:,:),allocatable::p !array of points, array of triangle vertices, and big L finite element array
+	real(kind=8), dimension(:,:),allocatable::p !array of points, array of triangle vertices, and big L finite element array
 	real(kind=8), dimension(:),allocatable::fu,val1,val2,x,x_exact,arr !array of vertices along edge, array of <integral>g_i*f
 	real, dimension(3,3)::A !We will use this array in the process of finding equations of planes
-	real::det,temp,centx,centy !determinants of matrices, values to insert in sparse matrix
+	real(kind=8)::det,temp,centx,centy !determinants of matrices, values to insert in sparse matrix
 	
 	write(*,*) 'Nx = ' !How many elements along x?
 	read(*,*) nx
@@ -47,12 +47,12 @@ PROGRAM fem
 		centx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !x-coord of centroid of triangle
 		centy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0) !y-coord of centroid of triangle
 		do j=0,8
-			val1(q+j) = (-1)*(A(1,j/3+1)*A(1,modulo(j,3)+1)+A(2,j/3+1)*A(2,modulo(j,3)+1))*det*0.5/(centx) !evaluating the integral of the basis functions, multiplied by 1/x (grad-schafranov)
+			val1(q+j)=(-1)*(A(1,j/3+1)*A(1,modulo(j,3)+1)+A(2,j/3+1)*A(2,modulo(j,3)+1))*det*0.5/centx!evaluating the integral of the basis functions, multiplied by 1/x (grad-schafranov)
 		end do
 		q = q+9
-	end do
+!	end do
 
-	do i = 1,NT !build right hand side, looping over all triangles
+!	do i = 1,NT !build right hand side, looping over all triangles
 		centx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !x-coord of centroid of triangle
 		centy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0) !y-coord of centroid of triangle
 		temp = foo(centx,centy)/(centx) !2d midpoint rule, multiplied by 1/x (grad-schafranov)
@@ -114,9 +114,9 @@ PROGRAM fem
 		x(i) = 0
 	end do
 	temp = 1e-6
-	i = int(sqrt(float(NV)))/2
-	q = i
-	
+	i = nx/2
+	q = nx/2
+	write(*,*) i,q,temp	
 	call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
 	
 	do i = 1,N
@@ -124,7 +124,7 @@ PROGRAM fem
 	end do
 	
 	open(1,file='./files/conv.dat',access='append')
-		write(1,*) maxval(abs(x-x_exact)),sqrt(float(NT))
+		write(1,*) maxval(abs(x-x_exact))
 	close(1)
 	
 	open(1,file='./files/p.dat') !write stuff to file before memory release, so that it can be plotted in python
