@@ -5,22 +5,22 @@ MODULE mesh
 	FUNCTION exact(x,y) !known solution to Poisson equation (for debugging purposes)
 		implicit none
 		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
-		real,intent(in):: x,y
-		real exact
+		real(kind=8),intent(in):: x,y
+		real(kind=8) exact
 
-		exact = x*(1-x)*y*(1-y)
+	!	exact = x*(1-x)*y*(1-y)
 		
-!		exact = 0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
+		exact = (-1)*0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
 		END FUNCTION exact	
 	FUNCTION foo(x,y) !right side of the equation
 		implicit none
 		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
-		real,intent(in):: x,y
-		real:: foo
+		real(kind=8),intent(in):: x,y
+		real(kind=8):: foo
 		
-		foo = 2*(x*x-x+y*y-y)
+	!	foo = 2*(x*x-x+y*y-y)
 		
-!		foo = sin(pi*x)*sin(pi*y)
+		foo = sin(pi*x)*sin(pi*y)
 		END FUNCTION foo
 			
 	FUNCTION  linspace(a,b,n) !equivalent of python linspace
@@ -126,4 +126,71 @@ MODULE mesh
 			M(3,3) = i
 			M = M*(1/det)
 		END SUBROUTINE threeinv
+	
+
+	SUBROUTINE distmesh(p,t,b)
+                implicit none
+                INTEGER, PARAMETER :: maxrecs = 100000
+                INTEGER :: J, NR, ios
+                CHARACTER(LEN=100) :: inputfile
+                CHARACTER(LEN=1) :: junk
+                integer,dimension(:,:),allocatable::t
+                real(kind=8),dimension(:,:),allocatable::p
+                real,dimension(3)::temp
+                integer,dimension(:),allocatable::b
+                NR = 0
+        OPEN(UNIT=1,FILE='infiles/p.txt')
+                DO J=1,maxrecs
+                        READ(1,*,IOSTAT=ios) junk
+                        IF (ios /= 0) EXIT
+                        IF (J == maxrecs) THEN
+                                STOP
+                        ENDIF
+                        NR = NR + 1
+                ENDDO
+                REWIND(1)
+                ALLOCATE(p(NR,2))
+                DO J=1,NR
+                        READ(1,*) p(j,1),p(j,2)
+                END DO
+                CLOSE(1)
+                NR = 0
+        OPEN(UNIT=1,FILE='infiles/t.txt')
+                DO J=1,maxrecs
+                        READ(1,*,IOSTAT=ios) junk
+                        IF (ios /= 0) EXIT
+                        IF (J == maxrecs) THEN
+                                STOP
+                        ENDIF
+                        NR = NR + 1
+                ENDDO
+                REWIND(1)
+                ALLOCATE(t(NR,3))
+                DO J=1,NR
+                        READ(1,*) temp(1),temp(2),temp(3)
+			t(j,1) = int(temp(1))
+                        t(j,2) = int(temp(2))
+                        t(j,3) = int(temp(3))
+                END DO
+                CLOSE(1)
+                NR = 0
+        OPEN(UNIT=1,FILE='infiles/b.txt')
+                DO J=1,maxrecs
+                        READ(1,*,IOSTAT=ios) junk
+                        IF (ios /= 0) EXIT
+                        IF (J == maxrecs) THEN
+                                STOP
+                        ENDIF
+                        NR = NR + 1
+                ENDDO
+                REWIND(1)
+                ALLOCATE(b(NR))
+                DO J=1,NR
+                        temp(1)=0
+                        READ(1,*) temp(1)
+                        b(j) = int(temp(1))
+                END DO
+                CLOSE(1)
+
+        END SUBROUTINE distmesh
 	END MODULE mesh
