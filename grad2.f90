@@ -6,7 +6,7 @@ PROGRAM fem
 	integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
 	real(kind=8), dimension(:,:),allocatable::p !array of points, array of triangle vertices, and big L finite element array
 	real(kind=8), dimension(:),allocatable::fu,val1,val2,x,x_exact,arr !array of vertices along edge, array of <integral>g_i*f
-	real, dimension(3,3)::A !We will use this array in the process of finding equations of planes
+	real(kind=8), dimension(3,3)::A !We will use this array in the process of finding equations of planes
 	real(kind=8)::det,temp,centx,centy !determinants of matrices, values to insert in sparse matrix
 	
 !	write(*,*) 'Nx = ' !How many elements along x?

@@ -36,8 +36,8 @@ MODULE meshgs
 	
 	FUNCTION threedet(m) !Find the determinant of a 3x3 matrix
 		implicit none
-		real, dimension(3,3):: m
-		real:: threedet
+		real(kind=8), dimension(3,3):: m
+		real(kind=8):: threedet
 
 		threedet =  m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + m(1,3)*m(2,1)*m(3,2)
 		threedet = threedet - m(1,3)*m(2,2)*m(3,1) - m(1,1)*m(2,3)*m(3,2) - m(1,2)*m(2,1)*m(3,3)
@@ -100,8 +100,8 @@ MODULE meshgs
 		END SUBROUTINE buildmesh
 	
 	SUBROUTINE threeinv(M) !Inverts 3x3 matrix. M is the matrix we want to invert
-			real,dimension(3,3)::m
-			real::det,a,b,c,d,e,f,g,h,i
+			real(kind=8),dimension(3,3)::m
+			real(kind=8)::det,a,b,c,d,e,f,g,h,i
 			det = threedet(m)
 
 			a = M(2,2)*M(3,3)-M(2,3)*M(3,2)
