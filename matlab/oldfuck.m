@@ -4,7 +4,7 @@ function [] = oldfuck(size)
     [p,t]=distmesh2d(fd,@huniform,size,[1,1;2,2],pfix);
     bedge = boundedges(p,t);
     b = unique(bedge);
-    save infiles/b.txt b -ASCII;
-    save infiles/p.txt p -ASCII;
-    save infiles/t.txt t -ASCII;
+    save ../infiles/b.txt b -ASCII;
+    save ../infiles/p.txt p -ASCII;
+    save ../infiles/t.txt t -ASCII;
 end
