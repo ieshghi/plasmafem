@@ -4,6 +4,16 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.tri import Triangulation
 import scipy.sparse as spr
 
+
+def conver(slope=-2):
+        conv = np.loadtxt('files/conv.dat')
+        c = conv.T[1]
+        conv = conv.T[0]
+        plt.loglog(c,conv)
+        plt.loglog(c,c**(slope))
+        return 0
+
+
 def plotting(ex = 0):
 	t = np.loadtxt('./files/t.dat')
 	p = np.loadtxt('./files/p.dat')

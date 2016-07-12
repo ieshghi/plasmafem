@@ -8,7 +8,9 @@ MODULE meshgs
 		real(kind=8),intent(in):: x,y
 		real(kind=8) exact
 
-		exact = (x-1)*(x-2)*(y-1)*(y-2)		
+		exact = (x*x*x*x/8.0 + 0.015379895031306 -0.322620578214426*(x*x)-0.024707604384971*(x*x*x*x-4*x*x*y*y))
+
+!		exact = (x-1)*(x-2)*(y-1)*(y-2)		
 !		exact = 0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
 		END FUNCTION exact	
 	FUNCTION foo(x,y) !right side of the equation
@@ -16,9 +18,10 @@ MODULE meshgs
 		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
 		real(kind=8),intent(in):: x,y
 		real(kind=8):: foo
+
+		foo = x*x
 		
-		foo = 2*(x-1)*(x-2)+3*(y-1)*(y-2)/x 
-		
+!		foo = 2*(x-1)*(x-2)+3*(y-1)*(y-2)/x 
 !		foo = sin(pi*x)*sin(pi*y)
 		END FUNCTION foo
 			

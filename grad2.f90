@@ -119,7 +119,6 @@ PROGRAM fem
 	end do
 	temp = 1e-6
 	i = NB/4
-	write(*,*) i
 	q = i
 	
 	call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
