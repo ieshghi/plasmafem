@@ -9,18 +9,22 @@ PROGRAM fem
 	real(kind=8), dimension(3,3)::A !We will use this array in the process of finding equations of planes
 	real(kind=8)::det,temp,centx,centy !determinants of matrices, values to insert in sparse matrix
 	
-	write(*,*) 'Nx = ' !How many elements along x?
-	read(*,*) nx
-	write(*,*) 'Ny = ' !How many elements along y?
-	read(*,*) ny
-	N = nx*ny
-	allocate(fu(N))	
-	call buildmesh(nx,ny,p,t,b) !Builds p,t, and b arrays for later use. 
+!	write(*,*) 'Nx = ' !How many elements along x?
+!	read(*,*) nx
+!!	write(*,*) 'Ny = ' !How many elements along y?
+!	read(*,*) ny
+!	N = nx*ny
+!	allocate(fu(N))	
+!	call buildmesh(nx,ny,p,t,b) !Builds p,t, and b arrays for later use. 
+
+	call distmesh(p,t,b)
 	
 	NT = size(t(:,1))
 	NV = size(p(:,1))
 	NB = size(b)
 
+	N = NV !Total number of elements will be the number of vertices
+	allocate(fu(N))
 	allocate(val1(NT*9),col1(NT*9),row1(NT*9),val2(NT*9),col2(NT*9),row2(NT*9),x(N),x_exact(N))! Allocate sizes of arrays
 	q = 1
 	do i = 1,NT !Loop to build the row and col vectors
@@ -47,7 +51,7 @@ PROGRAM fem
 		centx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !x-coord of centroid of triangle
 		centy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0) !y-coord of centroid of triangle
 		do j=0,8
-			val1(q+j)=(-1)*(A(1,j/3+1)*A(1,modulo(j,3)+1)+A(2,j/3+1)*A(2,modulo(j,3)+1))*det*0.5/centx!evaluating the integral of the basis functions, multiplied by 1/x (grad-schafranov)
+			val1(q+j) = (-1)*(A(1,j/3+1)*A(1,modulo(j,3)+1)+A(2,j/3+1)*A(2,modulo(j,3)+1))*det*0.5/(centx) !evaluating the integral of the basis functions, multiplied by 1/x (grad-schafranov)
 		end do
 		q = q+9
 !	end do
@@ -114,9 +118,9 @@ PROGRAM fem
 		x(i) = 0
 	end do
 	temp = 1e-6
-	i = nx/2
-	q = nx/2
-	write(*,*) i,q,temp	
+	i = NB/4
+	q = i
+	
 	call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
 	
 	do i = 1,N
@@ -124,7 +128,7 @@ PROGRAM fem
 	end do
 	
 	open(1,file='./files/conv.dat',access='append')
-		write(1,*) maxval(abs(x-x_exact))
+		write(1,*) maxval(abs(x-x_exact)),sqrt(float(NT))
 	close(1)
 	
 	open(1,file='./files/p.dat') !write stuff to file before memory release, so that it can be plotted in python

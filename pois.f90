@@ -4,22 +4,17 @@ PROGRAM fem
 	integer(kind=8)::nx,ny,N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
 	integer, dimension(:,:),allocatable::t
 	integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
-	real, dimension(:,:),allocatable::p !array of points, array of triangle vertices, and big L finite element array
+	real(kind=8), dimension(:,:),allocatable::p !array of points, array of triangle vertices, and big L finite element array
 	real(kind=8), dimension(:),allocatable::fu,val1,val2,x,x_exact,arr !array of vertices along edge, array of <integral>g_i*f
-	real, dimension(3,3)::A !We will use this array in the process of finding equations of planes
+	real(kind=8), dimension(3,3)::A !We will use this array in the process of finding equations of planes
 	real::det,temp !determinants of matrices, values to insert in sparse matrix
 	
-	write(*,*) 'Nx = ' !How many elements along x?
-	read(*,*) nx
-	write(*,*) 'Ny = ' !How many elements along y?
-	read(*,*) ny
-	N = nx*ny !Total number of elements will be obviously nx*ny
-	allocate(fu(N))
-	
-	call buildmesh(nx,ny,p,t,b) !Builds p,t, and b arrays for later use. 
+	call distmesh(p,t,b) !Builds p,t, and b arrays for later use. 
 	NT = size(t(:,1))
 	NV = size(p(:,1))
-	NB = size(b) 
+	NB = size(b)
+	N = NV !Total number of elements will be the number of vertices
+        allocate(fu(N)) 
 	allocate(val1(NT*9),col1(NT*9),row1(NT*9),val2(NT*9),col2(NT*9),row2(NT*9),x(N),x_exact(N))! Allocate sizes of arrays
 	q = 1
 	do i = 1,NT !Loop to build the row and col vectors
@@ -111,8 +106,8 @@ PROGRAM fem
 		x(i) = 0
 	end do
 	temp = 1e-6
-	i = nx/2
-	q = nx/2
+	i = NB/4
+	q = i
 	call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
 	
 	do i = 1,N
@@ -120,7 +115,7 @@ PROGRAM fem
 	end do
 
 	open(1,file='./files/conv.dat',access='append')
-		write(1,*) maxval(abs(x-x_exact))
+		write(1,*) maxval(abs(x-x_exact)),sqrt(float(NT))
 	close(1)
 
 	

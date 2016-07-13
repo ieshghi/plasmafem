@@ -1,11 +1,10 @@
 # plasmafem
 Finite element method with finite elements for solveing Poisson equation and Grad-Shafranov equation, with 2nd order errors.
 
-Currently can solve both of them on any rectangle, with Direchlet boundary conditions.
+Currently can solve both of them on any boundary, with second order errors.
 
 File list:
 
-fuck.m - produces mesh on the square using Matlab Distmesh software
 mgmres.f90 -sparse linear equation solver, downloaded from http://people.sc.fsu.edu/~jburkardt/f_src/mgmres/mgmres.html
 mesh.f90 -contains a few utilities, like a linspace() routine, 3x3 matrix inverter, determinant calculator, and a mesh generator for a rectangle. Also contains the exact solution and right hand side of the equation we want to solve
 meshgs.f90 -same as mesh.f90, but is then imported in the G-S version of the code, not the Poisson one.
@@ -19,9 +18,3 @@ conv.dat : lists the maximum error for the latest few runs of the code. Each run
 exact.dat : contains exact solution for the latest run of pois.f90 or grad.f90
 
 infiles/ is a folder containing files used for the communication between distmesh and our Fortran programs.
-
-If there is a program with a 2 at the end instead of the usual program name, it is a distmesh version of the original software
-
-
-Future improvements:
-Will be able to solve on a curved boundary, and with nonzero boundaries. Also speed will be improved.
