@@ -8,9 +8,9 @@ MODULE mesh
 		real(kind=8),intent(in):: x,y
 		real(kind=8) exact
 
-	!	exact = x*(1-x)*y*(1-y)
-		
-		exact = (-1)*0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
+		exact = x*x+y*y-1 !zero on the unit circle
+		!exact = x*(1-x)*y*(1-y)
+		!exact = (-1)*0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
 		END FUNCTION exact	
 	FUNCTION foo(x,y) !right side of the equation
 		implicit none
@@ -18,9 +18,9 @@ MODULE mesh
 		real(kind=8),intent(in):: x,y
 		real(kind=8):: foo
 		
-	!	foo = 2*(x*x-x+y*y-y)
-		
-		foo = sin(pi*x)*sin(pi*y)
+		foo = 4.0 
+		!foo = 2*(x*x-x+y*y-y)
+		!foo = sin(pi*x)*sin(pi*y)
 		END FUNCTION foo
 			
 	FUNCTION  linspace(a,b,n) !equivalent of python linspace
@@ -37,8 +37,8 @@ MODULE mesh
 	
 	FUNCTION threedet(m) !Find the determinant of a 3x3 matrix
 		implicit none
-		real, dimension(3,3):: m
-		real:: threedet
+		real(kind=8), dimension(3,3):: m
+		real(kind=8):: threedet
 
 		threedet =  m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + m(1,3)*m(2,1)*m(3,2)
 		threedet = threedet - m(1,3)*m(2,2)*m(3,1) - m(1,1)*m(2,3)*m(3,2) - m(1,2)*m(2,1)*m(3,3)
@@ -101,7 +101,7 @@ MODULE mesh
 		END SUBROUTINE buildmesh
 	
 	SUBROUTINE threeinv(M) !Inverts 3x3 matrix. M is the matrix we want to invert
-			real,dimension(3,3)::m
+			real(kind=8),dimension(3,3)::m
 			real::det,a,b,c,d,e,f,g,h,i
 			det = threedet(m)
 
