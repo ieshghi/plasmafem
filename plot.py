@@ -4,6 +4,19 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.tri import Triangulation
 import scipy.sparse as spr
 
+def plotspec(ret=False):
+        a = np.loadtxt('files/deriv.dat')
+        b = a[:,2] + 1j*a[:,3]
+        f = a[:,0]
+        d = a[:,1]
+        x = a[:,4]
+        plt.plot(x,d)
+        plt.plot(x,np.real(b))
+        if ret==True :
+            return b,f,d
+        else:
+            return 0
+
 
 def conver(slope=-2):
         conv = np.loadtxt('files/conv.dat')

@@ -130,7 +130,7 @@ MODULE meshgs
 		END SUBROUTINE threeinv
 	SUBROUTINE distmesh(p,t,b)
 		implicit none
-		INTEGER, PARAMETER :: maxrecs = 100000
+		INTEGER, PARAMETER :: maxrecs = 1000000
 		INTEGER :: J, NR, ios
 		CHARACTER(LEN=100) :: inputfile
 		CHARACTER(LEN=1) :: junk 
