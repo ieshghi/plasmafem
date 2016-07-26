@@ -1,7 +1,7 @@
 PROGRAM fem
 	USE mesh
 	implicit none
-	integer(kind=8)::nx,ny,N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
+	integer(kind=8)::N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
 	integer, dimension(:,:),allocatable::t
 	integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
 	real(kind=8), dimension(:,:),allocatable::p !array of points, array of triangle vertices, and big L finite element array
