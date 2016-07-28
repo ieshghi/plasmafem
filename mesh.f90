@@ -12,7 +12,6 @@ MODULE mesh
         real(kind=8), dimension(:),allocatable::fu,val1,val2,arr,src_val,x !array of vertices along edge, array of <integral>g_i*f
         real(kind=8), dimension(3,3)::A !We will use this array in the process of finding equations of planes
         real::det,temp !determinants of matrices, values to insert in sparse matrix
-
         call distmesh(p,t,b) !Builds p,t, and b arrays for later use. 
         NT = size(t(:,1))
         NV = size(p(:,1))
@@ -97,6 +96,15 @@ MODULE mesh
         k=0
         do i = 1,size(col2)  !find size of nonzero parts of the row and column arrays
                 if(col2(i) /= 0) then
+			k=k+1
+                end if
+        end do
+
+        allocate(ia(k),ja(k),arr(k)) !the points which were set to 0 in col2 are a waste of space and irrelevant to the calculation, so we need our final arrays not to include them. So they should be this size
+
+        j=1
+        do i = 1,size(col2) !makes arr and ja, the value and column arrays that will be interacting with PARDISO. They mustn't have the redundant spaces that were set to zero in col2
+                if(col2(i)/=0) then
 			arr(j) = val2(i)
                         ja(j) = col2(i)
                         ia(j) = row2(i)

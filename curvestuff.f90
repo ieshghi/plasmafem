@@ -1,7 +1,87 @@
 module curvestuff
 contains
 
-SUBROUTINE specder(xmin,xmax,N,input)
+subroutine getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N) !xin,yin should come from the arcparam subroutine, N is their length
+        implicit none
+        integer::N,i,j
+        real(kind=8), dimension(N,2)::xp
+        real(kind=8), dimension(N)::xin,yin,dx,dy,ddx,ddy
+        real(kind=8), dimension(N,N)::Gn
+        real(kind=8), dimension(2)::gxgy,x
+        real(kind=8)::pi
+        pi = 4*atan(1.0)
+
+        do i=1,N
+                xp(i,1) = xin(i)
+                xp(i,2) = yin(i)
+        enddo
+        do i=1,N
+                do j=1,N
+                        x(1) = xin(i)
+                        x(2) = yin(i)
+                        Gn(i,j) = ((-1)*dy(j)*Gx(x,(/xp(j,1),xp(j,2)/)) + dx(j)*Gy(x,(/xp(j,1),xp(j,2)/)))/sqrt(dx(j)**2 + dy(j)**2)
+                enddo
+                Gn(i,i) = (ddx(i)*dy(i) - ddy(i)*dx(i))/(4*pi*(dx(i)**2+dy(i)**2)**(3.0/2))
+        enddo
+end subroutine getgnmat
+
+
+function gx(x,xp)
+        implicit none
+        real(kind=8),dimension(2)::x,xp
+        real(kind=8)::gx,pi
+        pi = 4*atan(1.0)
+        
+        gx =(1/(2*pi))*(xp(1)-x(1))*((x(1)-xp(1))**2+(x(2)-xp(2))**2)**(-1)
+end function gx
+
+function gy(x,xp)
+        implicit none
+        real(kind=8),dimension(2)::x,xp
+        real(kind=8)::gy,pi
+        pi = 4*atan(1.0)
+        
+        gy=(1/(2*pi))*(xp(2)-x(2))*((x(1)-xp(1))**2+(x(2)-xp(2))**2)**(-1)
+end function gy
+
+
+subroutine gradyoupee(upx,upy,eps,del,kap) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
+        use mesh
+        implicit none
+        integer::n,m,i
+        real(kind=8), dimension(:,:), allocatable::srcloc,targloc,targnorm
+        real(kind=8), dimension(:), allocatable::srcval,psol,x,y,tarc,r,upx,upy
+        complex(kind=16), dimension(:), allocatable::pot
+        real(kind=8):: del,eps,kap,pi,ds,l
+        real(kind=8),dimension(7)::args
+        real(kind=8),dimension(2)::der
+
+        pi = 4*atan(1.0)
+        call poissolve(srcloc,x,srcval)
+        n = size(srcval)
+        m = int(sqrt(float(n)))
+        call arcparam(real(0.0,kind=8),2*pi,tarc,ds,m,l,eps,del,kap)
+        allocate(targloc(m,2),targnorm(m,2),pot(m),r(m),upx(m),upy(m))
+
+        args = (/eps,del,kap,real(0.7,kind=8),real(1e-10,kind =8),real(1.0,kind=8),real(0.0,kind=8)/)
+        do i = 1,m
+                r(i) = findr_fast(tarc(i),args)
+                targloc(i,1) = 1 + r(i)*cos(tarc(i))
+                targloc(i,2) = r(i)*sin(tarc(i))
+                der = dxdy(tarc(i),eps,del,kap)
+                targnorm(i,1) = der(2)/sqrt(der(1)**2+der(2)**2)
+                targnorm(i,2) = (-1)*der(1)/sqrt(der(1)**2+der(2)**2)
+        enddo   
+        call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,4,-1,pot)
+	do i = 1,m
+		upx(i) = real(pot(i)) !This might have to be revised, depending on the convention for the normal direction (in/out)
+		upy(i) = (-1)*imag(pot(i))
+	enddo
+end subroutine gradyoupee
+
+
+
+SUBROUTINE specder(xmin,xmax,N,input)  !Takes spectral derivatives of order N of a function evaluated at N points.
         USE, INTRINSIC :: iso_c_binding
         IMPLICIT NONE
         INCLUDE '/usr/include/fftw3.f03'
@@ -49,7 +129,7 @@ SUBROUTINE specder(xmin,xmax,N,input)
 END SUBROUTINE specder
 
 
-subroutine arcparam(a,b,tarc,darc,N,L,eps,del,kap)
+subroutine arcparam(a,b,tarc,darc,N,L,eps,del,kap) !Provides N evenly spaced points along a curve parametrised by r,theta between theta = a and theta = b
 	implicit none
 	integer::N,i,j
 	real(kind=8) a,b,darc,L,tinit,tfguess,tfupdate,currerr,ds,eps,del,kap
@@ -93,7 +173,7 @@ subroutine arcparam(a,b,tarc,darc,N,L,eps,del,kap)
 end subroutine arcparam
 
 
-subroutine lgmap(x,w,a,b,mode)
+subroutine lgmap(x,w,a,b,mode) !does 16-point or 1000-point gauss-legendre quadrature, mapped from [-1,1] to [a,b]
 	implicit none
 	integer::NR,i,J,ios,mode
         INTEGER, PARAMETER :: maxrecs = 1000000
@@ -142,8 +222,23 @@ subroutine lgmap(x,w,a,b,mode)
 	end do
 end subroutine lgmap
 
+function ddxddy(theta,eps,del,kap)
+	implicit none
+	real(kind=8),parameter::infi = 1e-10
+        real(kind=8) ::theta,eps,del,kap,tp,tm
+        real(kind=8), dimension(2)::ddxddy
+        real(kind=8),dimension(7)::args
+        args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 
-function dxdy(theta,eps,del,kap)
+	tp = theta + infi
+	tm = theta - infi
+
+	ddxddy(1) = (findr_fast(tp,args)*cos(tp)-2*findr_fast(theta,args)*cos(theta)+findr_fast(tm,args)*cos(tm))/(infi**2)
+        ddxddy(2) = (findr_fast(tp,args)*sin(tp)+findr_fast(tm,args)*sin(tm)-2*findr_fast(theta,args)*sin(theta))/(infi**2)
+
+end function ddxddy
+
+function dxdy(theta,eps,del,kap) !takes dx/dtheta and dy/dtheta @ theta on a tokamak defined by eps,del,kap
 	implicit none
 	real(kind=8),parameter::infi = 1e-10
 	real(kind=8) ::theta,eps,del,kap
@@ -158,12 +253,11 @@ function dxdy(theta,eps,del,kap)
 
 end function dxdy
 
-function findr_fast(theta,args)
+function findr_fast(theta,args) !easier to call that findr itself, takes an array instead of a bunch of individual args
 	implicit none
 	real(kind=8),dimension(7)::args
 	real(kind=8)::eps,del,kap,guess,theta,errtol,centx,centy
 	real::findr_fast
-
 	eps = args(1)
 	del = args(2)
 	kap = args(3)
@@ -174,10 +268,9 @@ function findr_fast(theta,args)
 
 	findr_fast = findr(eps,del,kap,theta,guess,errtol,centx,centy)
 
-
 end function findr_fast
 
-function findr(eps,del,kap,theta,guess,errtol,centx,centy)
+function findr(eps,del,kap,theta,guess,errtol,centx,centy) !newton's method on a tokamak defined by eps,del,kap
 	implicit none
 	integer::i
 	real(kind=8)::eps,del,kap,theta,findr,guess,currerr,errtol,centx,centy,rp,rm,dfr,one,pi
@@ -213,7 +306,7 @@ function findr(eps,del,kap,theta,guess,errtol,centx,centy)
 	end do
 end function findr
 
-function tokam(x,y,c,eps,del,kap)
+function tokam(x,y,c,eps,del,kap) !tokamak function
 	implicit none
 	real(kind=8) :: x,y,c,eps,del,kap,d1,d2,d3,tokam
 
@@ -221,7 +314,7 @@ function tokam(x,y,c,eps,del,kap)
 	tokam = c/8*x**4 + d2*x**2 + d3*(x**4-4*x**2*y**2)+d1
 end function tokam
 
-subroutine switchpars(ep,de,kap,d1,d2,d3)
+subroutine switchpars(ep,de,kap,d1,d2,d3) !switches from eps,del,kap to d1,d2,d3
 	implicit none
 	integer::info
 	real(kind=8)::ep,de,kap,d1,d2,d3,const,one
