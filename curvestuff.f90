@@ -1,6 +1,93 @@
 module curvestuff
 contains
 
+subroutine derpois(eps,del,kap,infi,N) !so far, recycled from getgnmat.f90 code. I'm to sleepy to code something worthwhile...
+	use mesh
+	implicit none
+        real(kind=8),dimension(:,:),allocatable::Gn
+        real(kind=8),dimension(:),allocatable::tarc,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy
+        real(kind=8)::pi,ds,eps,del,kap,L,infi
+        real(kind=8),dimension(2)::der,dder
+        real(kind=8),dimension(7)::args
+        integer::i,N
+        pi = 4*atan(1.0)
+	
+        allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N),rarc(N))
+        args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
+	
+        call arcparam(real(0.0,kind=8),2*pi,tarc,ds,N,L,eps,del,kap)
+        do i = 1,N
+                der = dxdy(tarc(i),eps,del,kap)
+                dder = ddxddy(tarc(i),eps,del,kap)
+                rarc = findr_fast(tarc(i),args)
+                xin(i) = 1.0 + rarc(i)*cos(tarc(i))
+                yin(i) = rarc(i)*sin(tarc(i))
+                dx(i) = der(1)
+                dy(i) = der(2)
+                ddx(i) = dder(1)
+                ddy(i) = dder(2)
+        enddo
+
+        call getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N)
+
+        call gradyoupee(upx,upy,eps,del,kap)
+	
+	!solve up_t/n (take gradyoupee and dot it with t^ and n^ (which are taken using the derivatives of the boundary where you
+	!are) on the boundary
+	!solve Uh on the boundary
+	!get Uh_t and Uh_n on the boundary
+	!thus we get u_t(=0) and u_n by adding uh_n and up_n
+	!we then switch to u_x and u_y on the boundary
+	!then we can solve the poisson equation for u_x and u_y knowing F_x and F_y... right?
+
+
+end subroutine derpois
+
+
+subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for U^h
+	implicit none
+	integer::N,i,j,info
+	real(kind=8)::ds
+	real(kind=8),dimension(N)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,sigma,zeros,rhs,pvt
+	real(kind=8),dimension(N,N)::lhs,gn
+	real(kind=8),dimension(2)::ut
+	complex(kind=16),dimension(N)::pot,potn
+	complex(kind=16),dimension(N,2)::grad	
+
+
+	do i = 1,N
+		ones(i) = 1.0
+		zeros(i) = 0.0
+		rnx(i) = dy(i)/sqrt(dx(i)**2+dy(i)**2)
+		rny(i) = (-1)*dx(i)/sqrt(dx(i)**2+dy(i)**2)
+		ut = (/dx(i),dy(i)/)
+		
+		sigma(i) = upx(i)*ut(1)+upy(i)*ut(2)
+		do j=1,N
+			if(i==j) then
+				lhs(i,j) = ds + gn(i,j) + ds**2
+			else
+				lhs(i,j) = gn(i,j) + ds**2
+			endif
+		enddo
+	enddo
+
+
+	call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,N,sigma,zeros,4,1,4,-1,pot,potn,grad)
+	
+	do i = 1,N
+		rhs(i) = real(pot(i))
+	enddo
+
+	call dgesv(N,1,lhs,N,pvt,rhs,N,info)
+	
+	do i = 1,N
+		uh(i) = rhs(i)
+	enddo
+
+end subroutine solveyouh
+
+
 subroutine getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N) !xin,yin should come from the arcparam subroutine, N is their length
         implicit none
         integer::N,i,j
@@ -45,7 +132,7 @@ function gy(x,xp)
 end function gy
 
 
-subroutine gradyoupee(upx,upy,eps,del,kap) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
+subroutine gradyoupee(upx,upy,eps,del,kap,ds,m) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
         use mesh
         implicit none
         integer::n,m,i
