@@ -1,18 +1,29 @@
 module curvestuff
 contains
 
-subroutine derpois(eps,del,kap,infi,N) !so far, recycled from getgnmat.f90 code. I'm to sleepy to code something worthwhile...
+
+subroutine derpois(eps,del,kap,infi) !Solves poisson equation with first derivatives to second order error.
+	!IMPORTANT: for the moment, it is necessary to import the correct values of eps,del,kap in derpois and in distmesh.
+	!Otherwise we are working with two different tokamaks. This can be fixed later.
 	use mesh
 	implicit none
-        real(kind=8),dimension(:,:),allocatable::Gn
-        real(kind=8),dimension(:),allocatable::tarc,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy
+        real(kind=8),dimension(:,:),allocatable::Gn,p
+        real(kind=8),dimension(:),allocatable::tarc,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uh,uhn,un,upn,ux,uy
         real(kind=8)::pi,ds,eps,del,kap,L,infi
-        real(kind=8),dimension(2)::der,dder
+        real(kind=8),dimension(2)::that,nhat
+	real(kind=8),dimension(2,2)::flipmat
         real(kind=8),dimension(7)::args
+	real(kind=8)::det
+	integer(kind=8),dimension(:),allocatable::b
+	integer(kind=9),dimension(:,:),allocatable::t
         integer::i,N
+
+	call distmesh(p,t,b) !we import the arrays describing the finite element decomposition of the tokamak
+	N = 2*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
+
         pi = 4*atan(1.0)
 	
-        allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N),rarc(N))
+        allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N),rarc(N),uh(N),uhn(N),un(N),upn(N))
         args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 	
         call arcparam(real(0.0,kind=8),2*pi,tarc,ds,N,L,eps,del,kap)
@@ -30,17 +41,27 @@ subroutine derpois(eps,del,kap,infi,N) !so far, recycled from getgnmat.f90 code.
 
         call getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N)
 
-        call gradyoupee(upx,upy,eps,del,kap)
+        call gradyoupee(upx,upy,eps,del,kap) !we have the gradient of U^p. 
 	
-	!solve up_t/n (take gradyoupee and dot it with t^ and n^ (which are taken using the derivatives of the boundary where you
-	!are) on the boundary
-	!solve Uh on the boundary
-	!get Uh_t and Uh_n on the boundary
-	!thus we get u_t(=0) and u_n by adding uh_n and up_n
-	!we then switch to u_x and u_y on the boundary
-	!then we can solve the poisson equation for u_x and u_y knowing F_x and F_y... right?
+	call solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds)
 
+	call specder(0,2*pi,N,uh) !spectral derivative of U^h gives us U^h_t, which is equal to u^h_n
 
+	uhn = uh
+
+	do i = 1,N
+		nhat = (/(-1)*dy(i)/sqrt(dx(i)**2+dy(i)**2),dx(i)/sqrt(dx(i)**2+dy(i)**2)/)
+		that = (/dx(i)/sqrt(dx(i)**2+dy(i)**2),dy(i)/sqrt(dx(i)**2+dy(i)**2)/)
+		upn(i) = upx(i)*nhat(1)+upy(i)*nhat(2)
+		un(i) = uhn(i) + upn(i)
+		det = nhat(1)*that(2)-nhat(2)*that(1)
+		ux(i) = 1/der*(un(i)*that(2)-0*nhat(2)) !the zero comes from the fact that we know u_t to be 0
+		uy(i) = 1/der*(0*nhat(1)-un(i)*that(1))
+	enddo
+
+	!we still need to: interpolate the points on the boundary which correspond to triangle vertices, then write a version of the
+	!poisson solver where we can send ux and uy to it, and it solves our equation. Not much left to do!	
+	
 end subroutine derpois
 
 
