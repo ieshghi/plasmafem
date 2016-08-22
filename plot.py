@@ -28,8 +28,8 @@ def conver(slope=-2):
 
 
 def plotting(ex = 0):
-	t = np.loadtxt('./files/t.dat')
-	p = np.loadtxt('./files/p.dat')
+	t = np.loadtxt('./infiles/t.dat')
+	p = np.loadtxt('./infiles/p.dat')
 	forsol = np.loadtxt('./files/x.dat')
 	exact = np.loadtxt('./files/exact.dat')
 	tr = Triangulation(p[:,0],p[:,1],triangles = t-1)
@@ -44,8 +44,8 @@ def plotting(ex = 0):
 	return 0
 
 def plotsolve():
-	t = np.loadtxt('./files/t.dat')
-	p = np.loadtxt('./files/p.dat')
+	t = np.loadtxt('./infiles/t.dat')
+	p = np.loadtxt('./infiles/p.dat')
 	fu = np.loadtxt('./files/fu.dat')
 	ia = np.loadtxt('./files/ia.dat') -1
 	ja = np.loadtxt('./files/ja.dat') -1
@@ -59,8 +59,8 @@ def plotsolve():
 	return 0
 	
 def comparepy(rat=0,dif=0):
-	t = np.loadtxt('./files/t.dat')
-	p = np.loadtxt('./files/p.dat')
+	t = np.loadtxt('./infiles/t.dat')
+	p = np.loadtxt('./infiles/p.dat')
 	fu = np.loadtxt('./files/fu.dat')
 	ia = np.loadtxt('./files/ia.dat') -1
 	ja = np.loadtxt('./files/ja.dat') -1
@@ -81,8 +81,8 @@ def comparepy(rat=0,dif=0):
 			ax2.plot_trisurf(tr,diff)
 
 def errorcheck(rat=0,dif=0):
-	t = np.loadtxt('./files/t.dat')
-	p = np.loadtxt('./files/p.dat')
+	t = np.loadtxt('./infiles/t.dat')
+	p = np.loadtxt('./infiles/p.dat')
 	forsol = np.loadtxt('./files/x.dat')
 	exact = np.loadtxt('./files/exact.dat')
 	tr = Triangulation(p[:,0],p[:,1],triangles = t-1)

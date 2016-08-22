@@ -1,4 +1,4 @@
-function [] = makeplot(del,eps,kap)
+function [] = makebdry(eps,del,kap)
 	N = 10000;
 	theta = linspace(0,2*pi,10000);
 	q = zeros(1,N);
@@ -12,7 +12,7 @@ function [] = makeplot(del,eps,kap)
 		x = q.*cos(theta);
 		y = q.*sin(theta);
 	else
-		d = parswitch(del,eps,kap);
+		d = parswitch(eps,del,kap);
 		c=1;
 		tuk = @(x) tok(x,c,d(1),d(2),d(3)); %tokamak
 		for i=1:N
@@ -24,4 +24,5 @@ function [] = makeplot(del,eps,kap)
 	
 	
 	save bdry.txt x y -ASCII
+	save ../infiles/params.txt eps del kap -ASCII
 end

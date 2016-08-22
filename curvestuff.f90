@@ -1,29 +1,55 @@
 module curvestuff
 contains
 
+function upper(theta,tarc)
+	implicit none
+	real(kind=8),dimension(:)::tarc
+	real(kind=8)::theta
+	integer::N,upper,i
 
-subroutine derpois(eps,del,kap,infi) !Solves poisson equation with first derivatives to second order error.
+	N = size(tarc)
+
+	do i = 1,N
+		if(tarc(i)>theta) then
+			upper = i
+			stop
+		endif
+	end do
+end function upper
+
+function interp1d(x,x1,x2,y1,y2)
+	implicit none
+	real(kind=8)::x,x1,x2,y1,y2,interp1d
+
+	interp1d = y1*(1-(x-x1)/(x2-x1))+y2*(1-(x2-x)/(x2-x1))
+end function interp1d
+
+
+subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation with first derivatives to second order error.
 	!IMPORTANT: for the moment, it is necessary to import the correct values of eps,del,kap in derpois and in distmesh.
 	!Otherwise we are working with two different tokamaks. This can be fixed later.
 	use mesh
 	implicit none
         real(kind=8),dimension(:,:),allocatable::Gn,p
-        real(kind=8),dimension(:),allocatable::tarc,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uh,uhn,un,upn,ux,uy
+        real(kind=8),dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly
         real(kind=8)::pi,ds,eps,del,kap,L,infi
-        real(kind=8),dimension(2)::that,nhat
+        real(kind=8),dimension(2)::that,nhat,der,dder
 	real(kind=8),dimension(2,2)::flipmat
         real(kind=8),dimension(7)::args
-	real(kind=8)::det
-	integer(kind=8),dimension(:),allocatable::b
-	integer(kind=9),dimension(:,:),allocatable::t
-        integer::i,N
+	real(kind=8)::det,temp
+	integer,dimension(:),allocatable::b
+	integer,dimension(:,:),allocatable::t
+        integer::i,j,N,m
+	complex(kind=8),dimension(:),allocatable::cxarr
 
-	call distmesh(p,t,b) !we import the arrays describing the finite element decomposition of the tokamak
+	call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
+	write(*,*) eps,del,kap
 	N = 2*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
 
         pi = 4*atan(1.0)
 	
-        allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N),rarc(N),uh(N),uhn(N),un(N),upn(N))
+        allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N))
+	allocate(rarc(N),uh(N),cxarr(N),uhn(N),un(N),upn(N),ux(N),uy(N),ubx(size(b)),uby(size(b)))
         args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 	
         call arcparam(real(0.0,kind=8),2*pi,tarc,ds,N,L,eps,del,kap)
@@ -40,14 +66,17 @@ subroutine derpois(eps,del,kap,infi) !Solves poisson equation with first derivat
         enddo
 
         call getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N)
+	
 
-        call gradyoupee(upx,upy,eps,del,kap) !we have the gradient of U^p. 
+        call gradyoupee(upx,upy,eps,del,kap,ds,m,sol) !we have the gradient of U^p. 
 	
 	call solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds)
 
-	call specder(0,2*pi,N,uh) !spectral derivative of U^h gives us U^h_t, which is equal to u^h_n
+	do i =1,N
+		cxarr(i) = complex(uh(i),0.0)
+	enddo
 
-	uhn = uh
+	call specder(0.0,real(2*pi,kind=4),N,cxarr,uhn) !spectral derivative of U^h gives us U^h_t, which is equal to u^h_n
 
 	do i = 1,N
 		nhat = (/(-1)*dy(i)/sqrt(dx(i)**2+dy(i)**2),dx(i)/sqrt(dx(i)**2+dy(i)**2)/)
@@ -55,12 +84,19 @@ subroutine derpois(eps,del,kap,infi) !Solves poisson equation with first derivat
 		upn(i) = upx(i)*nhat(1)+upy(i)*nhat(2)
 		un(i) = uhn(i) + upn(i)
 		det = nhat(1)*that(2)-nhat(2)*that(1)
-		ux(i) = 1/der*(un(i)*that(2)-0*nhat(2)) !the zero comes from the fact that we know u_t to be 0
-		uy(i) = 1/der*(0*nhat(1)-un(i)*that(1))
+		ux(i) = 1.0/det*(un(i)*that(2)-0*nhat(2)) !the zero comes from the fact that we know u_t to be 0
+		uy(i) = 1.0/det*(0*nhat(1)-un(i)*that(1))
 	enddo
 
-	!we still need to: interpolate the points on the boundary which correspond to triangle vertices, then write a version of the
-	!poisson solver where we can send ux and uy to it, and it solves our equation. Not much left to do!	
+	do i = 1,size(b) !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
+		temp = atan2(p(b(i),2),p(b(i),1))
+		j = upper(temp,tarc)
+		ubx(i) = interp1d(temp,tarc(j-1),tarc(j),ux(j-1),ux(j))
+		uby(i) = interp1d(temp,tarc(j-1),tarc(j),uy(j-1),uy(j))
+	enddo
+
+	call firstder(solx,p,t,b,ubx)
+	call firstder(soly,p,t,b,uby)
 	
 end subroutine derpois
 
@@ -81,7 +117,7 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 		zeros(i) = 0.0
 		rnx(i) = dy(i)/sqrt(dx(i)**2+dy(i)**2)
 		rny(i) = (-1)*dx(i)/sqrt(dx(i)**2+dy(i)**2)
-		ut = (/dx(i),dy(i)/)
+		ut = (/dx(i),dy(i)/)/sqrt(dx(i)**2+dy(i)**2)
 		
 		sigma(i) = upx(i)*ut(1)+upy(i)*ut(2)
 		do j=1,N
@@ -93,9 +129,8 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 		enddo
 	enddo
 
+	call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,N,sigma,zeros,4.0,1.0,4.0,-1,pot,potn,grad)
 
-	call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,N,sigma,zeros,4,1,4,-1,pot,potn,grad)
-	
 	do i = 1,N
 		rhs(i) = real(pot(i))
 	enddo
@@ -153,7 +188,7 @@ function gy(x,xp)
 end function gy
 
 
-subroutine gradyoupee(upx,upy,eps,del,kap,ds,m) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
+subroutine gradyoupee(upx,upy,eps,del,kap,ds,m,x) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
         use mesh
         implicit none
         integer::n,m,i
@@ -181,6 +216,7 @@ subroutine gradyoupee(upx,upy,eps,del,kap,ds,m) !Computes u^p on the boundary of
                 targnorm(i,2) = (-1)*der(1)/sqrt(der(1)**2+der(2)**2)
         enddo   
         call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,4,-1,pot)
+	
 	do i = 1,m
 		upx(i) = real(pot(i)) !This might have to be revised, depending on the convention for the normal direction (in/out)
 		upy(i) = (-1)*imag(pot(i))
@@ -189,7 +225,7 @@ end subroutine gradyoupee
 
 
 
-SUBROUTINE specder(xmin,xmax,N,input)  !Takes spectral derivatives of order N of a function evaluated at N points.
+SUBROUTINE specder(xmin,xmax,N,input,deriv)  !Takes spectral derivatives of order N of a function evaluated at N points.
         USE, INTRINSIC :: iso_c_binding
         IMPLICIT NONE
         INCLUDE '/usr/include/fftw3.f03'
@@ -197,7 +233,7 @@ SUBROUTINE specder(xmin,xmax,N,input)  !Takes spectral derivatives of order N of
         integer :: N,i
         integer(kind=8) ::M
         complex(C_DOUBLE_COMPLEX), dimension(N) :: input,output,input2,output2
-        real,dimension(N)::x,k,der
+        real(kind=8),dimension(N)::x,k,der,deriv
         real,parameter::pi =3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862
         real::xmin,xmax,dx
 
@@ -232,7 +268,7 @@ SUBROUTINE specder(xmin,xmax,N,input)  !Takes spectral derivatives of order N of
         call fftw_destroy_plan(plan)
 
         do i = 1,N
-                input(i) = output2(i)
+		deriv(i) = real(output2(i))
         end do
 END SUBROUTINE specder
 
@@ -276,7 +312,6 @@ subroutine arcparam(a,b,tarc,darc,N,L,eps,del,kap) !Provides N evenly spaced poi
 		end do
 		tarc(i) = tfguess
 	end do
-
 
 end subroutine arcparam
 
@@ -332,7 +367,7 @@ end subroutine lgmap
 
 function ddxddy(theta,eps,del,kap)
 	implicit none
-	real(kind=8),parameter::infi = 1e-10
+	real(kind=8),parameter::infi = 1e-8
         real(kind=8) ::theta,eps,del,kap,tp,tm
         real(kind=8), dimension(2)::ddxddy
         real(kind=8),dimension(7)::args
@@ -348,16 +383,16 @@ end function ddxddy
 
 function dxdy(theta,eps,del,kap) !takes dx/dtheta and dy/dtheta @ theta on a tokamak defined by eps,del,kap
 	implicit none
-	real(kind=8),parameter::infi = 1e-10
+	real(kind=8),parameter::infi = 1e-8
 	real(kind=8) ::theta,eps,del,kap
 	real(kind=8), dimension(2)::dxdy
 	real(kind=8),dimension(7)::args
 	
-	args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 
+	args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
+	
 	dxdy(1) = (findr_fast(theta+infi,args)*cos(theta+infi)-findr_fast(theta-infi,args)*cos(theta-infi))/(2*infi)
 	dxdy(2) = (findr_fast(theta+infi,args)*sin(theta+infi)-findr_fast(theta-infi,args)*sin(theta-infi))/(2*infi)
-		
 
 end function dxdy
 
@@ -365,7 +400,7 @@ function findr_fast(theta,args) !easier to call that findr itself, takes an arra
 	implicit none
 	real(kind=8),dimension(7)::args
 	real(kind=8)::eps,del,kap,guess,theta,errtol,centx,centy
-	real::findr_fast
+	real(kind=8)::findr_fast
 	eps = args(1)
 	del = args(2)
 	kap = args(3)
@@ -421,6 +456,12 @@ function tokam(x,y,c,eps,del,kap) !tokamak function
 	call switchpars(eps,del,kap,d1,d2,d3)
 	tokam = c/8*x**4 + d2*x**2 + d3*(x**4-4*x**2*y**2)+d1
 end function tokam
+
+function draw(x,y) !just a weird shape, for testing purposes
+	implicit none
+	real(kind=8) :: x,y,draw
+	draw = x**2 + y**2 - sin(2*y)
+endfunction draw
 
 subroutine switchpars(ep,de,kap,d1,d2,d3) !switches from eps,del,kap to d1,d2,d3
 	implicit none
