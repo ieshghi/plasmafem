@@ -43,11 +43,10 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 	complex(kind=8),dimension(:),allocatable::cxarr
 
 	call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
-	write(*,*) eps,del,kap
 	N = 2*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
 
         pi = 4*atan(1.0)
-	
+
         allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N))
 	allocate(rarc(N),uh(N),cxarr(N),uhn(N),un(N),upn(N),ux(N),uy(N),ubx(size(b)),uby(size(b)))
         args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
@@ -66,9 +65,8 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
         enddo
 
         call getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N)
-	
 
-        call gradyoupee(upx,upy,eps,del,kap,ds,m,sol) !we have the gradient of U^p. 
+        call gradyoupee(upx,upy,eps,del,kap,ds,N,m,sol) !we have the gradient of U^p. 
 	
 	call solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds)
 
@@ -188,10 +186,10 @@ function gy(x,xp)
 end function gy
 
 
-subroutine gradyoupee(upx,upy,eps,del,kap,ds,m,x) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
+subroutine gradyoupee(upx,upy,eps,del,kap,ds,nb,m,x) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
         use mesh
         implicit none
-        integer::n,m,i
+        integer::n,m,i,nb
         real(kind=8), dimension(:,:), allocatable::srcloc,targloc,targnorm
         real(kind=8), dimension(:), allocatable::srcval,psol,x,y,tarc,r,upx,upy
         complex(kind=16), dimension(:), allocatable::pot
@@ -202,7 +200,7 @@ subroutine gradyoupee(upx,upy,eps,del,kap,ds,m,x) !Computes u^p on the boundary 
         pi = 4*atan(1.0)
         call poissolve(srcloc,x,srcval)
         n = size(srcval)
-        m = int(sqrt(float(n)))
+        m = 4*nb
         call arcparam(real(0.0,kind=8),2*pi,tarc,ds,m,l,eps,del,kap)
         allocate(targloc(m,2),targnorm(m,2),pot(m),r(m),upx(m),upy(m))
 
@@ -215,8 +213,8 @@ subroutine gradyoupee(upx,upy,eps,del,kap,ds,m,x) !Computes u^p on the boundary 
                 targnorm(i,1) = der(2)/sqrt(der(1)**2+der(2)**2)
                 targnorm(i,2) = (-1)*der(1)/sqrt(der(1)**2+der(2)**2)
         enddo   
-        call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,4,-1,pot)
-	
+        call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,7,-1,pot)
+
 	do i = 1,m
 		upx(i) = real(pot(i)) !This might have to be revised, depending on the convention for the normal direction (in/out)
 		upy(i) = (-1)*imag(pot(i))

@@ -9,7 +9,7 @@ MODULE mesh
 		real(kind=8),intent(in):: x,y
 		real(kind=8) exact
 
-		exact = 1-x*x+y*y 
+		exact = 1-(x*x+y*y) 
 		!exact = x*(1-x)*y*(1-y)
 		!exact = (-1)*0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
 		END FUNCTION exact	
