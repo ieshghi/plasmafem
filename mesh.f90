@@ -183,7 +183,7 @@ MODULE mesh
         NB = size(b)
         N = NV !Total number of elements will be the number of vertices
         allocate(fu(N))
-        allocate(val1(NT*9),col1(NT*9),row1(NT*9),val2(NT*9),col2(NT*9),row2(NT*9),x(N),src_val(NT),src_loc(NT,2))! Allocate sizes of arrays
+        allocate(val1(NT*9),col1(NT*9),row1(NT*9),val2(NT*9),col2(NT*9),row2(NT*9),x(N),src_val(NT),src_loc(2,NT))! Allocate sizes of arrays
         q = 1
         do i = 1,NT !Loop to build the row and col vectors
                 do j = 0,8
@@ -221,8 +221,8 @@ MODULE mesh
                 fu(t(i,2)) = fu(t(i,2)) + det*0.5*temp/3.0
                 fu(t(i,3)) = fu(t(i,3)) + det*0.5*temp/3.0
 		
-		src_loc(i,1) = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0)
-		src_loc(i,2) = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
+		src_loc(1,i) = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0)
+		src_loc(2,i) = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
 		src_val(i) = temp*det*0.5
 
         end do

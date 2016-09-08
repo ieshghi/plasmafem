@@ -67,7 +67,7 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
         call getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N)
 
         call gradyoupee(upx,upy,eps,del,kap,ds,N,m,sol) !we have the gradient of U^p. 
-	
+
 	call solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds)
 
 	do i =1,N
@@ -103,10 +103,10 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 	implicit none
 	integer::N,i,j,info
 	real(kind=8)::ds
-	real(kind=8),dimension(N)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,sigma,zeros,rhs,pvt
+	real(kind=8),dimension(N)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,zeros,rhs,pvt
 	real(kind=8),dimension(N,N)::lhs,gn
 	real(kind=8),dimension(2)::ut
-	complex(kind=16),dimension(N)::pot,potn
+	complex(kind=16),dimension(N)::pot,potn,sigma,mu
 	complex(kind=16),dimension(N,2)::grad	
 
 
@@ -116,8 +116,8 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 		rnx(i) = dy(i)/sqrt(dx(i)**2+dy(i)**2)
 		rny(i) = (-1)*dx(i)/sqrt(dx(i)**2+dy(i)**2)
 		ut = (/dx(i),dy(i)/)/sqrt(dx(i)**2+dy(i)**2)
-		
-		sigma(i) = upx(i)*ut(1)+upy(i)*ut(2)
+		mu(i) = cmplx(0.0,0.0)
+		sigma(i) = cmplx(upx(i)*ut(1)+upy(i)*ut(2))
 		do j=1,N
 			if(i==j) then
 				lhs(i,j) = ds + gn(i,j) + ds**2
@@ -127,7 +127,7 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 		enddo
 	enddo
 
-	call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,N,sigma,zeros,4.0,1.0,4.0,-1,pot,potn,grad)
+	call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,N,1.0,sigma,0.0,mu,4,1,4,-1,pot,potn,grad)
 
 	do i = 1,N
 		rhs(i) = real(pot(i))
@@ -202,16 +202,16 @@ subroutine gradyoupee(upx,upy,eps,del,kap,ds,nb,m,x) !Computes u^p on the bounda
         n = size(srcval)
         m = 4*nb
         call arcparam(real(0.0,kind=8),2*pi,tarc,ds,m,l,eps,del,kap)
-        allocate(targloc(m,2),targnorm(m,2),pot(m),r(m),upx(m),upy(m))
+        allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
         args = (/eps,del,kap,real(0.7,kind=8),real(1e-10,kind =8),real(1.0,kind=8),real(0.0,kind=8)/)
         do i = 1,m
                 r(i) = findr_fast(tarc(i),args)
-                targloc(i,1) = 1 + r(i)*cos(tarc(i))
-                targloc(i,2) = r(i)*sin(tarc(i))
+                targloc(1,i) = 1 + r(i)*cos(tarc(i))
+                targloc(2,i) = r(i)*sin(tarc(i))
                 der = dxdy(tarc(i),eps,del,kap)
-                targnorm(i,1) = der(2)/sqrt(der(1)**2+der(2)**2)
-                targnorm(i,2) = (-1)*der(1)/sqrt(der(1)**2+der(2)**2)
+                targnorm(1,i) = der(2)/sqrt(der(1)**2+der(2)**2)
+                targnorm(2,i) = (-1)*der(1)/sqrt(der(1)**2+der(2)**2)
         enddo   
         call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,7,-1,pot)
 
