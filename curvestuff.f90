@@ -1,29 +1,22 @@
 module curvestuff
 contains
 
-function upper(theta,tarc)
+function upper(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S DOING ITS WORK
 	implicit none
 	real(kind=8),dimension(:)::tarc
 	real(kind=8)::theta
 	integer::N,upper,i
-
 	N = size(tarc)
-
-	do i = 1,N
-		if(tarc(i)>theta) then
-			upper = i
-			stop
+	upper = 0
+	do i = 1,n
+		if(tarc(i)>theta .and. upper==0) then
+			upper=i
 		endif
-	end do
+	enddo
+	if (upper==0) then
+		upper = n-1
+	endif
 end function upper
-
-function interp1d(x,x1,x2,y1,y2)
-	implicit none
-	real(kind=8)::x,x1,x2,y1,y2,interp1d
-
-	interp1d = y1*(1-(x-x1)/(x2-x1))+y2*(1-(x2-x)/(x2-x1))
-end function interp1d
-
 
 subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation with first derivatives to second order error.
 	!IMPORTANT: for the moment, it is necessary to import the correct values of eps,del,kap in derpois and in distmesh.
@@ -41,6 +34,8 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 	integer,dimension(:,:),allocatable::t
         integer::i,j,N,m
 	complex(kind=8),dimension(:),allocatable::cxarr
+	
+	call prini(6,13)
 
 	call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
 	N = 2*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
@@ -55,7 +50,7 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
         do i = 1,N
                 der = dxdy(tarc(i),eps,del,kap)
                 dder = ddxddy(tarc(i),eps,del,kap)
-                rarc = findr_fast(tarc(i),args)
+                rarc(i) = findr_fast(tarc(i),args)
                 xin(i) = 1.0 + rarc(i)*cos(tarc(i))
                 yin(i) = rarc(i)*sin(tarc(i))
                 dx(i) = der(1)
@@ -65,9 +60,7 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
         enddo
 
         call getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N)
-
         call gradyoupee(upx,upy,eps,del,kap,ds,N,m,sol) !we have the gradient of U^p. 
-
 	call solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds)
 
 	do i =1,N
@@ -88,14 +81,18 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 
 	do i = 1,size(b) !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
 		temp = atan2(p(b(i),2),p(b(i),1))
+		if(temp<0) then
+			temp = 2*pi+temp
+		endif
 		j = upper(temp,tarc)
 		ubx(i) = interp1d(temp,tarc(j-1),tarc(j),ux(j-1),ux(j))
 		uby(i) = interp1d(temp,tarc(j-1),tarc(j),uy(j-1),uy(j))
 	enddo
 
+	write(*,*) ('Taking derivatives...')
 	call firstder(solx,p,t,b,ubx)
 	call firstder(soly,p,t,b,uby)
-	
+
 end subroutine derpois
 
 
@@ -106,8 +103,8 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 	real(kind=8),dimension(N)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,zeros,rhs,pvt
 	real(kind=8),dimension(N,N)::lhs,gn
 	real(kind=8),dimension(2)::ut
-	complex(kind=16),dimension(N)::pot,potn,sigma,mu
-	complex(kind=16),dimension(N,2)::grad	
+	complex(kind=8),dimension(N)::pot,potn,sigma,mu
+	complex(kind=8),dimension(N,2)::grad	
 
 
 	do i = 1,N
@@ -127,7 +124,7 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 		enddo
 	enddo
 
-	call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,N,1.0,sigma,0.0,mu,4,1,4,-1,pot,potn,grad)
+	call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,N,1,sigma,0,mu,4,1,4,-1,pot,potn,grad)
 
 	do i = 1,N
 		rhs(i) = real(pot(i))
@@ -192,7 +189,7 @@ subroutine gradyoupee(upx,upy,eps,del,kap,ds,nb,m,x) !Computes u^p on the bounda
         integer::n,m,i,nb
         real(kind=8), dimension(:,:), allocatable::srcloc,targloc,targnorm
         real(kind=8), dimension(:), allocatable::srcval,psol,x,y,tarc,r,upx,upy
-        complex(kind=16), dimension(:), allocatable::pot
+        complex(kind=8), dimension(:), allocatable::pot
         real(kind=8):: del,eps,kap,pi,ds,l
         real(kind=8),dimension(7)::args
         real(kind=8),dimension(2)::der
@@ -213,7 +210,7 @@ subroutine gradyoupee(upx,upy,eps,del,kap,ds,nb,m,x) !Computes u^p on the bounda
                 targnorm(1,i) = der(2)/sqrt(der(1)**2+der(2)**2)
                 targnorm(2,i) = (-1)*der(1)/sqrt(der(1)**2+der(2)**2)
         enddo   
-        call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,7,-1,pot)
+        call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,4,-1,pot)
 
 	do i = 1,m
 		upx(i) = real(pot(i)) !This might have to be revised, depending on the convention for the normal direction (in/out)
@@ -481,4 +478,10 @@ subroutine switchpars(ep,de,kap,d1,d2,d3) !switches from eps,del,kap to d1,d2,d3
 
 end subroutine switchpars
 
+function interp1d(x,x1,x2,y1,y2)
+	implicit none
+	real(kind=8)::x,x1,x2,y1,y2,interp1d
+
+	interp1d = y1*(1.0-(x-x1)/(x2-x1))+y2*(1.0-(x2-x)/(x2-x1))
+end function interp1d
 end module curvestuff
