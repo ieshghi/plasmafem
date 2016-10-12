@@ -9,12 +9,12 @@ function upper(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S 
 	N = size(tarc)
 	upper = 0
 	do i = 1,n
-		if(tarc(i)>theta .and. upper==0) then
+		if(tarc(i)>=theta .and. upper==0) then
 			upper=i
 		endif
 	enddo
 	if (upper==0) then
-		upper = n-1
+		upper = n
 	endif
 end function upper
 
@@ -36,14 +36,13 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 	complex(kind=8),dimension(:),allocatable::cxarr
 	
 	call prini(6,13)
-
+	
 	call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
 	N = 2*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
-
         pi = 4*atan(1.0)
 
         allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N))
-	allocate(rarc(N),uh(N),cxarr(N),uhn(N),un(N),upn(N),ux(N),uy(N),ubx(size(b)),uby(size(b)))
+	allocate(rarc(N),uh(N),cxarr(N),uhn(N),un(N),upn(N),ux(N),uy(N),ubx(N/2),uby(N/2))
         args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 	
         call arcparam(real(0.0,kind=8),2*pi,tarc,ds,N,L,eps,del,kap)
@@ -68,7 +67,6 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 	enddo
 
 	call specder(0.0,real(2*pi,kind=4),N,cxarr,uhn) !spectral derivative of U^h gives us U^h_t, which is equal to u^h_n
-
 	do i = 1,N
 		nhat = (/(-1)*dy(i)/sqrt(dx(i)**2+dy(i)**2),dx(i)/sqrt(dx(i)**2+dy(i)**2)/)
 		that = (/dx(i)/sqrt(dx(i)**2+dy(i)**2),dy(i)/sqrt(dx(i)**2+dy(i)**2)/)
@@ -88,7 +86,7 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 		ubx(i) = interp1d(temp,tarc(j-1),tarc(j),ux(j-1),ux(j))
 		uby(i) = interp1d(temp,tarc(j-1),tarc(j),uy(j-1),uy(j))
 	enddo
-
+	
 	write(*,*) ('Taking derivatives...')
 	call firstder(solx,p,t,b,ubx)
 	call firstder(soly,p,t,b,uby)
@@ -126,12 +124,17 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 
 	call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,N,1,sigma,0,mu,4,1,4,-1,pot,potn,grad)
 
+
 	do i = 1,N
-		rhs(i) = real(pot(i))
+		rhs(i) = (-1)*real(pot(i))
 	enddo
 
 	call dgesv(N,1,lhs,N,pvt,rhs,N,info)
-	
+       
+	open(1,file='./files/boundx.dat')
+                write(1,*) rhs
+        close(1)
+
 	do i = 1,N
 		uh(i) = rhs(i)
 	enddo

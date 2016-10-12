@@ -9,7 +9,9 @@ MODULE mesh
 		real(kind=8),intent(in):: x,y
 		real(kind=8) exact
 
-		exact = 1-(x*x+y*y) 
+		exact = 1.0/8.0*x**4+0.0742-0.2072*x**2-0.0316*(x**4-4*(x**2)*(y**2))
+
+		!exact = 1-(x*x+y*y) 
 		!exact = x*(1-x)*y*(1-y)
 		!exact = (-1)*0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
 		END FUNCTION exact	
@@ -19,7 +21,9 @@ MODULE mesh
 		real(kind=8),intent(in):: x,y
 		real(kind=8):: foo
 		
-		foo = -4.0 
+		foo = 3.0/2.0*x**2-2*0.2072-0.0316*(12*x**2-4*2*y**2-4*2*x**2)
+
+		!foo = -4.0 
 		!foo = 2*(x*x-x+y*y-y)
 		!foo = sin(pi*x)*sin(pi*y)
 		END FUNCTION foo
@@ -28,28 +32,28 @@ MODULE mesh
 		implicit none
 		real(kind=8)::x,y,fx
 
-		fx = 0.0
+		fx = 3*x-0.0316*(24*x-4*4*x)
 	endfunction fx
 
 	function fy(x,y) !y derivative of rhs
 		implicit none
 		real(kind=8)::x,y,fy
 
-		fy = 0.0
+		fy = (-1)*0.0316*4*4*y
 	endfunction fy
 
 	function exactx(x,y) !x derivative of solution 
 		implicit none
 		real(kind=8)::x,y,exactx
 		
-		exactx = 1 - 2*x
+		exactx = 1.0/2.0*x**3-0.2072*2*x-0.0316*(4*x**3-2*x*y**2)
 	endfunction exactx
 
 	function exacty(x,y) !y derivative of solution
 		implicit none
 		real(kind=8)::x,y,exacty
 
-		exacty = 1 - 2*y
+		exacty = (-1)*2*y*x**2
 	endfunction exacty
 
 
@@ -122,7 +126,13 @@ MODULE mesh
                 end do
         end do
 
-        j=1
+	do i = 1,size(col2)
+		col2(i)=0
+		row2(i)=0
+		val2(i)=0
+	enddo
+        
+	j=1
         do i=1,size(col1) !Reprocess information in row1 and col1, to compress them. Redundancies are set to zero, to be ignored later.
                 if (col1(i) /= 0 .and. row1(i) /= 0) then
                         col2(j) = col1(i)
@@ -240,6 +250,12 @@ MODULE mesh
                 end do
         end do
 
+	do i = 1,size(col2)
+		col2(i)=0
+		row2(i)=0
+		val2(i)=0
+	enddo
+
         j=1
         do i=1,size(col1) !Reprocess information in row1 and col1, to compress them. Redundancies are set to zero, to be ignored later.
                 if (col1(i) /= 0 .and. row1(i) /= 0) then
@@ -282,7 +298,8 @@ MODULE mesh
         temp = 1e-6
         i = NB/4
         q = i
-        call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
+        
+	call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
 	END SUBROUTINE poissolve
 
 

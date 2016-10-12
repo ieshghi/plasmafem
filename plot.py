@@ -4,18 +4,63 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.tri import Triangulation
 import scipy.sparse as spr
 
-def plotspec(ret=False):
-        a = np.loadtxt('files/deriv.dat')
-        b = a[:,2] + 1j*a[:,3]
-        f = a[:,0]
-        d = a[:,1]
-        x = a[:,4]
-        plt.plot(x,d)
-        plt.plot(x,np.real(b))
-        if ret==True :
-            return b,f,d
-        else:
-            return 0
+def plottest(choice):
+	t = np.loadtxt('./infiles/t.txt')
+	p = np.loadtxt('./infiles/p.txt')
+        sol = np.loadtxt('./files/sol.dat')
+        solx = np.loadtxt('./files/solx.dat')
+        soly = np.loadtxt('./files/soly.dat')
+        diffx = np.loadtxt('./files/diffx.dat')
+        diffy = np.loadtxt('./files/diffy.dat')
+        ratx = np.loadtxt('./files/ratx.dat')
+        raty = np.loadtxt('./files/raty.dat')
+        ex = np.loadtxt('./files/ex.dat')
+        ey = np.loadtxt('./files/ey.dat')
+        exa = np.loadtxt('./files/exact.dat')
+	boundx = np.loadtxt('./files/boundx.dat')
+	boundy = np.loadtxt('./files/boundy.dat')
+        tr = Triangulation(p[:,0],p[:,1],triangles = t-1)       
+        if choice == 's':
+            ax = Axes3D(plt.gcf())
+            ax.plot_trisurf(tr,sol) 
+        elif choice == 'exact':
+            ax = Axes3D(plt.gcf())
+            ax.plot_trisurf(tr,exa)
+        elif choice == 'sx':
+            ax = Axes3D(plt.gcf())
+            ax.plot_trisurf(tr,solx)
+        elif choice == 'sy':
+            ax = Axes3D(plt.gcf())
+            ax.plot_trisurf(tr,soly)
+        elif choice == 'dx':
+            ax = Axes3D(plt.gcf())
+            ax.plot_trisurf(tr,diffx)
+        elif choice == 'dy':
+            ax = Axes3D(plt.gcf())
+            ax.plot_trisurf(tr,diffy)
+        elif choice == 'rx':
+            ax = Axes3D(plt.gcf())
+            ax.plot_trisurf(tr,ratx)
+        elif choice == 'ry':
+            ax = Axes3D(plt.gcf())
+            ax.plot_trisurf(tr,raty)
+        elif choice == 'ex':
+            ax = Axes3D(plt.gcf())
+            ax.plot_trisurf(tr,ex)
+        elif choice == 'ey':
+            ax = Axes3D(plt.gcf())
+            ax.plot_trisurf(tr,ey)
+        elif choice == 'boundx':
+            N = boundx.size
+            x = np.linspace(0,1,N)
+            plt.plot(x,boundx)
+            plt.show()
+        elif choice == 'boundy':
+            N = boundy.size
+            x = np.linspace(0,1,N)
+            plt.plot(x,boundy)
+            plt.show()
+
 
 
 def conver(slope=-2):
@@ -43,58 +88,3 @@ def plotting(ex = 0):
                 
 	return 0
 
-def plotsolve():
-	t = np.loadtxt('./infiles/t.dat')
-	p = np.loadtxt('./infiles/p.dat')
-	fu = np.loadtxt('./files/fu.dat')
-	ia = np.loadtxt('./files/ia.dat') -1
-	ja = np.loadtxt('./files/ja.dat') -1
-	arr = np.loadtxt('./files/arr.dat')
-	M = spr.csr_matrix((arr,(ia,ja)))
-	M = M.toarray()
-	pysol = np.linalg.solve(M,fu)
-	tr = Triangulation(p[:,0],p[:,1],triangles = t-1)
-	ax = Axes3D(plt.gcf())
-	ax.plot_trisurf(tr,pysol)
-	return 0
-	
-def comparepy(rat=0,dif=0):
-	t = np.loadtxt('./infiles/t.dat')
-	p = np.loadtxt('./infiles/p.dat')
-	fu = np.loadtxt('./files/fu.dat')
-	ia = np.loadtxt('./files/ia.dat') -1
-	ja = np.loadtxt('./files/ja.dat') -1
-	arr = np.loadtxt('./files/arr.dat')
-	forsol = np.loadtxt('./files/x.dat')
-	M = spr.csr_matrix((arr,(ia,ja)))
-	M = M.toarray()
-	pysol = np.linalg.solve(M,fu)
-	tr = Triangulation(p[:,0],p[:,1],triangles = t-1)
-	diff = abs(forsol-pysol)
-	ratio = abs(forsol/pysol)
-
-	if rat == 1:
-			ax1 = Axes3D(plt.gcf())
-			ax1.plot_trisurf(tr,ratio)
-	if dif == 1:
-			ax2 = Axes3D(plt.gcf())
-			ax2.plot_trisurf(tr,diff)
-
-def errorcheck(rat=0,dif=0):
-	t = np.loadtxt('./infiles/t.dat')
-	p = np.loadtxt('./infiles/p.dat')
-	forsol = np.loadtxt('./files/x.dat')
-	exact = np.loadtxt('./files/exact.dat')
-	tr = Triangulation(p[:,0],p[:,1],triangles = t-1)
-	diff = forsol-exact
-	ratio = forsol/exact
-	ratio[ratio==0] = np.nan
-	if rat==1:
-		ax = Axes3D(plt.gcf())
-		ax.plot_trisurf(tr,ratio)
-		
-	if dif==1:
-		ax = Axes3D(plt.gcf())
-		ax.plot_trisurf(tr,forsol-exact)
-	
-	return diff,ratio
