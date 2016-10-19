@@ -9,7 +9,7 @@ function upper(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S 
 	N = size(tarc)
 	upper = 0
 	do i = 1,n
-		if(tarc(i)>=theta .and. upper==0) then
+		if(tarc(i)>theta .and. upper==0) then
 			upper=i
 		endif
 	enddo
@@ -17,6 +17,22 @@ function upper(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S 
 		upper = n
 	endif
 end function upper
+function lower(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S DOING ITS WORK
+	implicit none
+	real(kind=8),dimension(:)::tarc
+	real(kind=8)::theta
+	integer::N,lower,i
+	N = size(tarc)
+	lower = 0
+	do i = 1,n
+		if(tarc(i)<theta) then
+			lower=i
+		endif
+	enddo
+	if (lower==0) then
+		lower = n
+	endif
+end function lower
 
 subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation with first derivatives to second order error.
 	!IMPORTANT: for the moment, it is necessary to import the correct values of eps,del,kap in derpois and in distmesh.
@@ -32,7 +48,7 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 	real(kind=8)::det,temp
 	integer,dimension(:),allocatable::b
 	integer,dimension(:,:),allocatable::t
-        integer::i,j,N,m
+        integer::i,j,k,N,m
 	complex(kind=8),dimension(:),allocatable::cxarr
 	
 	call prini(6,13)
@@ -78,14 +94,24 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 	enddo
 
 	do i = 1,size(b) !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
-		temp = atan2(p(b(i),2),p(b(i),1))
+		temp = atan2(p(b(i),2),p(b(i),1)-1.0d0)
 		if(temp<0) then
 			temp = 2*pi+temp
 		endif
+		open(1,file='./files/boundx.dat',access='append')
+			write(1,*) temp
+		close(1)
 		j = upper(temp,tarc)
-		ubx(i) = interp1d(temp,tarc(j-1),tarc(j),ux(j-1),ux(j))
-		uby(i) = interp1d(temp,tarc(j-1),tarc(j),uy(j-1),uy(j))
+		k = lower(temp,tarc)
+		ubx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j))
+		uby(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j))
 	enddo
+
+	open(1,file='./files/boundy.dat')
+		do i=1,N
+			write(1,*) ubx(i)
+		enddo
+	close(1)
 	
 	write(*,*) ('Taking derivatives...')
 	call firstder(solx,p,t,b,ubx)
@@ -97,8 +123,9 @@ end subroutine derpois
 subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for U^h
 	implicit none
 	integer::N,i,j,info
+	integer,dimension(N)::pvt
 	real(kind=8)::ds
-	real(kind=8),dimension(N)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,zeros,rhs,pvt
+	real(kind=8),dimension(N)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,zeros,rhs
 	real(kind=8),dimension(N,N)::lhs,gn
 	real(kind=8),dimension(2)::ut
 	complex(kind=8),dimension(N)::pot,potn,sigma,mu
@@ -115,9 +142,9 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 		sigma(i) = cmplx(upx(i)*ut(1)+upy(i)*ut(2))
 		do j=1,N
 			if(i==j) then
-				lhs(i,j) = ds + gn(i,j) + ds**2
+				lhs(i,j) = 0.5 + ds*gn(i,j) + ds**2
 			else
-				lhs(i,j) = gn(i,j) + ds**2
+				lhs(i,j) = ds*gn(i,j) + ds**2
 			endif
 		enddo
 	enddo
@@ -126,14 +153,12 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 
 
 	do i = 1,N
-		rhs(i) = (-1)*real(pot(i))
+		rhs(i) = real(pot(i))
 	enddo
 
 	call dgesv(N,1,lhs,N,pvt,rhs,N,info)
        
-	open(1,file='./files/boundx.dat')
-                write(1,*) rhs
-        close(1)
+	
 
 	do i = 1,N
 		uh(i) = rhs(i)
@@ -162,7 +187,7 @@ subroutine getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N) !xin,yin should come from the ar
                         x(2) = yin(i)
                         Gn(i,j) = ((-1)*dy(j)*Gx(x,(/xp(j,1),xp(j,2)/)) + dx(j)*Gy(x,(/xp(j,1),xp(j,2)/)))/sqrt(dx(j)**2 + dy(j)**2)
                 enddo
-                Gn(i,i) = (ddx(i)*dy(i) - ddy(i)*dx(i))/(4*pi*(dx(i)**2+dy(i)**2)**(3.0/2))
+               	Gn(i,i) =  (ddx(i)*dy(i) - ddy(i)*dx(i))/(4*pi*(dx(i)**2+dy(i)**2)**(3.0/2))
         enddo
 end subroutine getgnmat
 
@@ -365,9 +390,9 @@ end subroutine lgmap
 
 function ddxddy(theta,eps,del,kap)
 	implicit none
-	real(kind=8),parameter::infi = 1e-8
+	real(kind=8),parameter::infi = 1e-5
         real(kind=8) ::theta,eps,del,kap,tp,tm
-        real(kind=8), dimension(2)::ddxddy
+        real(kind=8), dimension(2)::ddxddy,vec
         real(kind=8),dimension(7)::args
         args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 
@@ -485,6 +510,6 @@ function interp1d(x,x1,x2,y1,y2)
 	implicit none
 	real(kind=8)::x,x1,x2,y1,y2,interp1d
 
-	interp1d = y1*(1.0-(x-x1)/(x2-x1))+y2*(1.0-(x2-x)/(x2-x1))
+	interp1d = y1*(1.0d0-(x-x1)/(x2-x1))+y2*((x-x1)/(x2-x1))
 end function interp1d
 end module curvestuff
