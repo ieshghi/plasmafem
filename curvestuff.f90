@@ -93,25 +93,17 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 		uy(i) = 1.0/det*(0*nhat(1)-un(i)*that(1))
 	enddo
 
-	do i = 1,size(b) !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
+	do i = 1,N/2 !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
 		temp = atan2(p(b(i),2),p(b(i),1)-1.0d0)
 		if(temp<0) then
 			temp = 2*pi+temp
 		endif
-		open(1,file='./files/boundx.dat',access='append')
-			write(1,*) temp
-		close(1)
 		j = upper(temp,tarc)
 		k = lower(temp,tarc)
 		ubx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j))
 		uby(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j))
 	enddo
 
-	open(1,file='./files/boundy.dat')
-		do i=1,N
-			write(1,*) ubx(i)
-		enddo
-	close(1)
 	
 	write(*,*) ('Taking derivatives...')
 	call firstder(solx,p,t,b,ubx)
@@ -153,7 +145,7 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 
 
 	do i = 1,N
-		rhs(i) = real(pot(i))
+		rhs(i) = (-1)*real(pot(i))
 	enddo
 
 	call dgesv(N,1,lhs,N,pvt,rhs,N,info)
