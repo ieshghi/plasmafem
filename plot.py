@@ -102,12 +102,32 @@ def conver(slope=-2):
 #        ax.loglog(c,conv,label='Result')
 #       ax.loglog(c,c**(slope),label=='Expected')
         
-        ax.plot(np.log(c),np.log(conv),label='Result')
-        ax.plot(np.log(c),np.log(c**(slope)),label='Expected')
+        ax.plot(np.log10(c),np.log10(conv),label='Result')
+        ax.plot(np.log10(c),np.log10(c**(slope)/40),label='Expected')
+        ax.set_title('Linear elements $u$ convergence')
+            
+        ax.set_xlabel('log10(N)')
+        ax.set_ylabel('log10(Error)')
+        ax.legend()
+        ax.plot()  
+        
+
+        return 0
+def conv(slope=-2):
+        fig = plt.figure()
+        conv = np.loadtxt('files/conv.dat')
+        print(conv)
+        c = np.array([10.,20.,40.,80.])
+        ax = fig.add_subplot(111)
+#        ax.loglog(c,conv,label='Result')
+#       ax.loglog(c,c**(slope),label=='Expected')
+        
+        ax.loglog(c,conv)
+        ax.loglog(c,c**(slope))
         ax.set_title('Linear elements $\psi$ convergence')
             
-        ax.set_xlabel('log(N)')
-        ax.set_ylabel('log(Error)')
+        ax.set_xlabel('log10(N)')
+        ax.set_ylabel('log10(Error)')
         ax.legend()
         ax.plot()  
         

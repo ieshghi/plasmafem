@@ -51,11 +51,10 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
         integer::i,j,k,N,m
 	complex(kind=8),dimension(:),allocatable::cxarr
 	
-	call prini(6,13)
-	
 	call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
 	N = 2*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
         pi = 4*atan(1.0)
+
 
         allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N))
 	allocate(rarc(N),uh(N),cxarr(N),uhn(N),un(N),upn(N),ux(N),uy(N),ubx(N/2),uby(N/2))
@@ -312,7 +311,7 @@ subroutine arcparam(a,b,tarc,darc,N,L,eps,del,kap) !Provides N evenly spaced poi
 		tfguess = tinit+darc
 		tfupdate = tfguess
 		currerr=1
-		do while(abs(currerr) > 1e-8)
+		do while(abs(currerr) > 1e-6)
 			deallocate(t,w)
 			tfguess = tfupdate
 			call lgmap(t,w,tinit,tfguess,0)

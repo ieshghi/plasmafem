@@ -11,7 +11,7 @@ MODULE mesh
 
 		exact = 1.0/8.0*x**4+0.0742-0.2072*x**2-0.0316*(x**4-4*(x**2)*(y**2))
 
-		!exact = 1-(x*x+y*y) 
+!		exact = 1-(x*x+y*y) 
 		!exact = x*(1-x)*y*(1-y)
 		!exact = (-1)*0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
 		END FUNCTION exact	
@@ -22,8 +22,7 @@ MODULE mesh
 		real(kind=8):: foo
 		
 		foo = 3.0/2.0*x**2-2*0.2072-0.0316*(12*x**2-4*2*y**2-4*2*x**2)
-
-		!foo = -4.0 
+!		foo = -4.0 
 		!foo = 2*(x*x-x+y*y-y)
 		!foo = sin(pi*x)*sin(pi*y)
 		END FUNCTION foo
@@ -187,8 +186,8 @@ MODULE mesh
         real(kind=8), dimension(:),allocatable::fu,val1,val2,arr,src_val,x !array of vertices along edge, array of <integral>g_i*f
         real(kind=8), dimension(3,3)::A !We will use this array in the process of finding equations of planes
         real(kind=8)::eps,del,kap,det,temp !determinants of matrices, values to insert in sparse matrix
-        call distmesh(p,t,b,eps,del,kap) !Builds p,t, and b arrays for later use. 
-        NT = size(t(:,1))
+	call distmesh(p,t,b,eps,del,kap) !Builds p,t, and b arrays for later use. 
+	NT = size(t(:,1))
         NV = size(p(:,1))
         NB = size(b)
         N = NV !Total number of elements will be the number of vertices
@@ -334,7 +333,7 @@ MODULE mesh
 	!b: (1,NE = edge number) array of points on the edge
 		implicit none
 		integer,dimension(:,:),allocatable::t
-		real,dimension(:,:),allocatable::p
+		real(kind=8),dimension(:,:),allocatable::p
 		integer,dimension(:),allocatable::b
 		integer(kind=8)::nx,ny,i,j !i,j are loop variables
 		real,dimension(nx)::x !arrays of x and y positions
