@@ -9,7 +9,7 @@ MODULE mesh
 		real(kind=8),intent(in):: x,y
 		real(kind=8) exact
 
-		exact = 1.0/8.0*x**4+0.0742-0.2072*x**2-0.0316*(x**4-4*(x**2)*(y**2))
+		exact = 1.0/8.0*x**4+0.074196117973385-0.207229068524213*x**2-0.031560975505360*(x**4-4*(x**2)*(y**2))
 
 !		exact = 1-(x*x+y*y) 
 		!exact = x*(1-x)*y*(1-y)
@@ -21,7 +21,7 @@ MODULE mesh
 		real(kind=8),intent(in):: x,y
 		real(kind=8):: foo
 		
-		foo = 3.0/2.0*x**2-2*0.2072-0.0316*(12*x**2-4*2*y**2-4*2*x**2)
+		foo = 3.0/2.0*x**2-2*0.207229068524213-0.031560975505360*(12*x**2-4*2*y**2-4*2*x**2)
 !		foo = -4.0 
 		!foo = 2*(x*x-x+y*y-y)
 		!foo = sin(pi*x)*sin(pi*y)
@@ -31,21 +31,21 @@ MODULE mesh
 		implicit none
 		real(kind=8)::x,y,fx
 
-		fx = 3*x-0.0316*(24*x-4*4*x)
+		fx = 3*x-0.031560975505360*(24*x-4*4*x)
 	endfunction fx
 
 	function fy(x,y) !y derivative of rhs
 		implicit none
 		real(kind=8)::x,y,fy
 
-		fy = (-1)*0.0316*4*4*y
+		fy = (-1)*0.031560975505360*4*4*y
 	endfunction fy
 
 	function exactx(x,y) !x derivative of solution 
 		implicit none
 		real(kind=8)::x,y,exactx
 		
-		exactx = 1.0/2.0*x**3-0.2072*2*x-0.0316*(4*x**3-2*x*y**2)
+		exactx = 1.0/2.0*x**3-0.207229068524213*2*x-0.031560975505360*(4*x**3-2*x*y**2)
 	endfunction exactx
 
 	function exacty(x,y) !y derivative of solution
@@ -297,7 +297,6 @@ MODULE mesh
         temp = 1e-6
         i = NB/4
         q = i
-        
 	call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
 	END SUBROUTINE poissolve
 
@@ -307,7 +306,7 @@ MODULE mesh
 	FUNCTION  linspace(a,b,n) !equivalent of python linspace
         implicit none
         real, intent(in):: a,b !start and endpoint
-        integer(kind=8), intent(in):: n !number of elements
+        integer, intent(in):: n !number of elements
         integer:: i ! loop variable
         real:: dx, linspace(n)
         dx = (b-a)/(n-1) !spacing between x's
@@ -335,7 +334,7 @@ MODULE mesh
 		integer,dimension(:,:),allocatable::t
 		real(kind=8),dimension(:,:),allocatable::p
 		integer,dimension(:),allocatable::b
-		integer(kind=8)::nx,ny,i,j !i,j are loop variables
+		integer::nx,ny,i,j !i,j are loop variables
 		real,dimension(nx)::x !arrays of x and y positions
 		real,dimension(ny)::y
 		real::w,z
@@ -411,13 +410,13 @@ MODULE mesh
 
 	SUBROUTINE distmesh(p,t,b,eps,del,kap)
                 implicit none
-                INTEGER, PARAMETER :: maxrecs = 100000
-                INTEGER :: J, NR, ios
+                INTEGER(kind=8), PARAMETER :: maxrecs = 1000000
+                INTEGER(kind=8) :: J, NR, ios
                 CHARACTER(LEN=100) :: inputfile
                 CHARACTER(LEN=1) :: junk
                 integer,dimension(:,:),allocatable::t
                 real(kind=8),dimension(:,:),allocatable::p
-                real,dimension(3)::temp
+                real(kind=8),dimension(3)::temp
                 integer,dimension(:),allocatable::b
 		real(kind=8)::eps,del,kap
                 NR = 0

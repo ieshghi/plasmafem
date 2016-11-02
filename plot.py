@@ -19,6 +19,8 @@ def plottest(choice):
         exa = np.loadtxt('./files/exact.dat')
 	boundx = np.loadtxt('./files/boundx.dat')
 	boundy = np.loadtxt('./files/boundy.dat')
+	exbx = np.loadtxt('./files/exbx.dat')
+	exby = np.loadtxt('./files/exby.dat')
         tr = Triangulation(p[:,0],p[:,1],triangles = t-1)       
         if choice == 's':
             ax = Axes3D(plt.gcf())
@@ -81,14 +83,24 @@ def plottest(choice):
             ax.set_ylabel('Y axis')
             ax.set_zlabel('Z axis')
         elif choice == 'boundx':
-            N = boundx.size
-            x = np.linspace(0,1,N)
-            plt.plot(x,boundx)
+            x = boundx[:,1]
+            y = boundx[:,0]
+            plt.scatter(x,y,color='red')
             plt.show()
         elif choice == 'boundy':
-            N = boundy.size
-            x = np.linspace(0,1,N)
-            plt.plot(x,boundy)
+            x = boundy[:,1]
+            y = boundy[:,0]
+            plt.scatter(x,y,color='red')
+            plt.show()
+        elif choice == 'exbx':
+            x = exbx[:,1]
+            y = exbx[:,0]
+            plt.scatter(x,y)
+            plt.show()
+        elif choice == 'exby':
+            x = exby[:,1]
+            y = exby[:,0]
+            plt.scatter(x,y)
             plt.show()
 
 
