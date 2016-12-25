@@ -71,7 +71,6 @@ MODULE mesh
         NV = size(p(:,1))
         NB = size(b)
         N = NV !Total number of elements will be the number of vertices
-        
 	allocate(fu(N))
         allocate(val1(NT*9),col1(NT*9),row1(NT*9),val2(NT*9),col2(NT*9),row2(NT*9),x(N))! Allocate sizes of arrays
         q = 1
@@ -111,7 +110,7 @@ MODULE mesh
                 fu(t(i,3)) = fu(t(i,3)) + det*0.5*temp/3.0
 		
         end do
-
+	
         do i=1,NB !This loops through the b array and sets the corresponding row of L to all zeros except for the L(b(i),b(i)) spot. It also sets the f(b(i) cell to zero. This allows for correct evaluation of the edges.
                 fu(b(i)) = u(i)
                 do j = 1,NT*9

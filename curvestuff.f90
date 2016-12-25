@@ -34,7 +34,7 @@ function lower(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S 
 	endif
 end function lower
 
-subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson equation with first derivatives to second order error.
+subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation with first derivatives to second order error.
 	!IMPORTANT: for the moment, it is necessary to import the correct values of eps,del,kap in derpois and in distmesh.
 	!Otherwise we are working with two different tokamaks. This can be fixed later.
 	!ALSO IMPORTANT (less so) once done debugging, outputting ubx,uby, and b is unnecessary
@@ -49,17 +49,17 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 	real(kind=8)::det,temp
 	integer,dimension(:),allocatable::b
 	integer,dimension(:,:),allocatable::t
-        integer::i,j,k,N,m
+        integer::i,j,k,N,m,bsize
 	complex(kind=8),dimension(:),allocatable::cxarr
 	
-	
 	call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
+
+	bsize = size(b)
 	N = 2*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
         pi = 4*atan(1.0)
 
-
         allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N))
-	allocate(rarc(N),uh(N),cxarr(N),uhn(N),un(N),upn(N),ux(N),uy(N),ubx(N/2),uby(N/2))
+	allocate(rarc(N),uh(N),cxarr(N),uhn(N),un(N),upn(N),ux(N),uy(N),ubx(bsize),uby(bsize))
         args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 	
         call arcparam(real(0.0,kind=8),2*pi,tarc,ds,N,L,eps,del,kap) !generate a parametrisation of the boundary. Tarc is the array
@@ -96,18 +96,22 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 		uy(i) = 1.0/det*(0*nhat(1)-un(i)*that(1))
 	enddo
 
-	do i = 1,N/2 !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
+	do i = 1,bsize !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
 		temp = atan2(p(b(i),2),p(b(i),1)-1.0d0) !find the angle at which point i is along the boundary
 		if(temp<0) then
 			temp = 2*pi+temp !if angle is negative, express in between 0 and 2pi instead
 		endif
 		j = upper(temp,tarc) !In our array of angles, find the index which is right above our point
 		k = lower(temp,tarc) !Find the one right below
-		ubx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j)) !interpolate x derivative boundary
-		uby(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
+		ubx(i) = interp1d(temp,tarc(k-1),tarc(j+1),ux(k-1),ux(j+1)) !interpolate x derivative boundary
+		uby(i) = interp1d(temp,tarc(k-1),tarc(j+1),uy(k-1),uy(j+1)) !same for y
+		!<TEMPORARY FIX>
+		ubx(bsize) = (ubx(bsize-1)+ubx(bsize-2))/2.0
+		uby(bsize-1) = (uby(bsize-2)+(1.6)*uby(bsize-3))/2.6
+		!</TEMPORARY FIX>
+	
 	enddo
 
-	
 	write(*,*) ('Taking derivatives...')
 	call firstder(solx,p,t,b,ubx)
 	call firstder(soly,p,t,b,uby)
@@ -155,8 +159,6 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 
 	call dgesv(N,1,lhs,N,pvt,rhs,N,info)
        
-	
-
 	do i = 1,N
 		uh(i) = rhs(i)
 	enddo
@@ -222,7 +224,7 @@ subroutine gradyoupee(upx,upy,eps,del,kap,ds,nb,m,x) !Computes u^p on the bounda
         pi = 4*atan(1.0)
 	call poissolve(srcloc,x,srcval)
 	n = size(srcval)
-        m = 4*nb
+        m = nb
         call arcparam(real(0.0,kind=8),2*pi,tarc,ds,m,l,eps,del,kap)
         allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
@@ -234,13 +236,15 @@ subroutine gradyoupee(upx,upy,eps,del,kap,ds,nb,m,x) !Computes u^p on the bounda
                 der = dxdy(tarc(i),eps,del,kap)
                 targnorm(1,i) = der(2)/sqrt(der(1)**2+der(2)**2)
                 targnorm(2,i) = (-1)*der(1)/sqrt(der(1)**2+der(2)**2)
-        enddo   
-        call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,4,-1,pot)
+        enddo	
+
+        call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,6,-1,pot)
 
 	do i = 1,m
-		upx(i) = real(pot(i)) !This might have to be revised, depending on the convention for the normal direction (in/out)
+		upx(i) = (1)*real(pot(i)) !This might have to be revised, depending on the convention for the normal direction (in/out)
 		upy(i) = (-1)*imag(pot(i))
 	enddo
+
 end subroutine gradyoupee
 
 
