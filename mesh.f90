@@ -110,7 +110,7 @@ MODULE mesh
                 fu(t(i,3)) = fu(t(i,3)) + det*0.5*temp/3.0
 		
         end do
-	
+
         do i=1,NB !This loops through the b array and sets the corresponding row of L to all zeros except for the L(b(i),b(i)) spot. It also sets the f(b(i) cell to zero. This allows for correct evaluation of the edges.
                 fu(b(i)) = u(i)
                 do j = 1,NT*9
@@ -147,6 +147,14 @@ MODULE mesh
                         j = j+1
                 end if
         end do
+
+	do i=1,NT*9
+		do j=1,nb
+			if(col2(i)==row2(i) .and. col2(i)/=0 .and. col2(i)==b(j)) then
+				val2(i)=1.0 !I DON'T KNOW WHAT THIS DOES EXACTLY. ASK LEE....
+			endif	
+		enddo
+	enddo
 
         k=0
         do i = 1,size(col2)  !find size of nonzero parts of the row and column arrays

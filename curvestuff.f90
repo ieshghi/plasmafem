@@ -105,11 +105,6 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 		k = lower(temp,tarc) !Find the one right below
 		ubx(i) = interp1d(temp,tarc(k-1),tarc(j+1),ux(k-1),ux(j+1)) !interpolate x derivative boundary
 		uby(i) = interp1d(temp,tarc(k-1),tarc(j+1),uy(k-1),uy(j+1)) !same for y
-		!<TEMPORARY FIX>
-		ubx(bsize) = (ubx(bsize-1)+ubx(bsize-2))/2.0
-		uby(bsize-1) = (uby(bsize-2)+(1.6)*uby(bsize-3))/2.6
-		!</TEMPORARY FIX>
-	
 	enddo
 
 	write(*,*) ('Taking derivatives...')
