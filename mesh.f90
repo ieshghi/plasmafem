@@ -111,19 +111,6 @@ MODULE mesh
 		
         end do
 
-        do i=1,NB !This loops through the b array and sets the corresponding row of L to all zeros except for the L(b(i),b(i)) spot. It also sets the f(b(i) cell to zero. This allows for correct evaluation of the edges.
-                fu(b(i)) = u(i)
-                do j = 1,NT*9
-                        if (row1(j) == b(i)) then
-                                if (col1(j) == b(i)) then
-                                        val1(j) = 1.0
-                                else
-                                        val1(j) = 0.0
-                                end if
-                        end if
-                end do
-        end do
-
 	do i = 1,size(col2)
 		col2(i)=0
 		row2(i)=0
@@ -147,14 +134,20 @@ MODULE mesh
                         j = j+1
                 end if
         end do
+        do i=1,NB !This loops through the b array and sets the corresponding row of L to all zeros except for the L(b(i),b(i)) spot. It also sets the f(b(i) cell to zero. This allows for correct evaluation of the edges.
+                fu(b(i)) = u(i)
+                do j = 1,NT*9
+                        if (row2(j) == b(i)) then
+                                if (col2(j) == b(i)) then
+                                        val2(j) = 1.0
+                                else
+                                        val2(j) = 0.0
+                                end if
+                        end if
+                end do
+        end do
 
-	do i=1,NT*9
-		do j=1,nb
-			if(col2(i)==row2(i) .and. col2(i)/=0 .and. col2(i)==b(j)) then
-				val2(i)=1.0 !I DON'T KNOW WHAT THIS DOES EXACTLY. ASK LEE....
-			endif	
-		enddo
-	enddo
+
 
         k=0
         do i = 1,size(col2)  !find size of nonzero parts of the row and column arrays
@@ -243,19 +236,6 @@ MODULE mesh
 
         end do
 
-        do i=1,NB !This loops through the b array and sets the corresponding row of L to all zeros except for the L(b(i),b(i)) spot. It also sets the f(b(i) cell to zero. This allows for correct evaluation of the edges.
-                fu(b(i)) = 0
-                do j = 1,NT*9
-                        if (row1(j) == b(i)) then
-                                if (col1(j) == b(i)) then
-                                        val1(j) = 1.0
-                                else
-                                        val1(j) = 0.0
-                                end if
-                        end if
-                end do
-        end do
-
 	do i = 1,size(col2)
 		col2(i)=0
 		row2(i)=0
@@ -279,6 +259,19 @@ MODULE mesh
                         j = j+1
                 end if
         end do
+        do i=1,NB !This loops through the b array and sets the corresponding row of L to all zeros except for the L(b(i),b(i)) spot. It also sets the f(b(i) cell to zero. This allows for correct evaluation of the edges.
+                fu(b(i)) = 0
+                do j = 1,NT*9
+                        if (row2(j) == b(i)) then
+                                if (col2(j) == b(i)) then
+                                        val2(j) = 1.0
+                                else
+                                        val2(j) = 0.0
+                                end if
+                        end if
+                end do
+        end do
+
 
         k=0
         do i = 1,size(col2)  !find size of nonzero parts of the row and column arrays
