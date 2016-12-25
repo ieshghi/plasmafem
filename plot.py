@@ -105,9 +105,14 @@ def plottest(choice):
 
 
 
-def conver(slope=-2):
+def conver(slope=-2,der=0):
         fig = plt.figure()
-        conv = np.loadtxt('files/convsol.dat')
+        if der==0:
+            conv = np.loadtxt('files/convsol.dat')
+        elif der=='x':
+            conv = np.loadtxt('files/convx.dat')
+        elif der=='y':
+            conv = np.loadtxt('files/convy.dat')
         c = conv.T[1]
         conv = conv.T[0]
         ax = fig.add_subplot(111)
@@ -115,7 +120,7 @@ def conver(slope=-2):
 #       ax.loglog(c,c**(slope),label=='Expected')
         
         ax.plot(np.log10(c),np.log10(conv),label='Result')
-        ax.plot(np.log10(c),np.log10(c**(slope)/40),label='Expected')
+#        ax.plot(np.log10(c),np.log10(c**(slope)/40),label='Expected')
         ax.set_title('Linear elements $u$ convergence')
             
         ax.set_xlabel('log10(N)')

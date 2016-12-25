@@ -34,9 +34,7 @@ function lower(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S 
 	endif
 end function lower
 
-subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation with first derivatives to second order error.
-	!IMPORTANT: for the moment, it is necessary to import the correct values of eps,del,kap in derpois and in distmesh.
-	!Otherwise we are working with two different tokamaks. This can be fixed later.
+subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson equation with first derivatives to second order error.
 	!ALSO IMPORTANT (less so) once done debugging, outputting ubx,uby, and b is unnecessary
 	use mesh
 	implicit none
@@ -55,7 +53,7 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 	call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
 
 	bsize = size(b)
-	N = 2*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
+	N = 6*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
         pi = 4*atan(1.0)
 
         allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N))
@@ -106,6 +104,10 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t) !Solves poisson equation 
 		ubx(i) = interp1d(temp,tarc(k-1),tarc(j+1),ux(k-1),ux(j+1)) !interpolate x derivative boundary
 		uby(i) = interp1d(temp,tarc(k-1),tarc(j+1),uy(k-1),uy(j+1)) !same for y
 	enddo
+
+	!FIXING THE LAST COUPLE OF ELEMENTS
+!	ubx(bsize) = (ubx(bsize-1)+ubx(bsize-2))/2
+!	uby(bsize-1) = (uby(bsize-2)+uby(bsize-3))/2
 
 	write(*,*) ('Taking derivatives...')
 	call firstder(solx,p,t,b,ubx)
@@ -236,8 +238,8 @@ subroutine gradyoupee(upx,upy,eps,del,kap,ds,nb,m,x) !Computes u^p on the bounda
         call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,6,-1,pot)
 
 	do i = 1,m
-		upx(i) = (1)*real(pot(i)) !This might have to be revised, depending on the convention for the normal direction (in/out)
-		upy(i) = (-1)*imag(pot(i))
+		upx(i) = (-1)*real(pot(i)) !This might have to be revised, depending on the convention for the normal direction (in/out)
+		upy(i) = (1)*imag(pot(i))
 	enddo
 
 end subroutine gradyoupee

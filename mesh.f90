@@ -38,21 +38,21 @@ MODULE mesh
 		implicit none
 		real(kind=8)::x,y,fy
 
-		fy = (-1)*0.031560975505360*4*4*y
+		fy = (1)*0.031560975505360*4*4*y
 	endfunction fy
 
 	function exactx(x,y) !x derivative of solution 
 		implicit none
 		real(kind=8)::x,y,exactx
 		
-		exactx = 1.0/2.0*x**3-0.207229068524213*2*x-0.031560975505360*(4*x**3-2*x*y**2)
+		exactx = 1.0/2.0*x**3-0.207229068524213*2*x-0.031560975505360*(4*x**3-8*x*y**2)
 	endfunction exactx
 
 	function exacty(x,y) !y derivative of solution
 		implicit none
 		real(kind=8)::x,y,exacty
 
-		exacty = (-1)*2*y*x**2
+		exacty = (0.031560975505360)*8*y*x**2
 	endfunction exacty
 
 
