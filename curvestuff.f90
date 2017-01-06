@@ -14,7 +14,7 @@ function upper(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S 
 		endif
 	enddo
 	if (upper==0) then
-		upper = n
+		upper = 1
 	endif
 end function upper
 function lower(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S DOING ITS WORK
@@ -30,7 +30,7 @@ function lower(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S 
 		endif
 	enddo
 	if (lower==0) then
-		lower = n
+		lower = 1
 	endif
 end function lower
 
@@ -40,6 +40,9 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 	implicit none
         real(kind=8),dimension(:,:),allocatable::Gn,p
         real(kind=8),dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly
+	!for debugging
+	real(kind=8),dimension(:),allocatable::fux,fuy,fun,fut
+	!\for debugging
         real(kind=8)::pi,ds,eps,del,kap,L,infi
         real(kind=8),dimension(2)::that,nhat,der,dder
 	real(kind=8),dimension(2,2)::flipmat
@@ -57,6 +60,9 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
         pi = 4*atan(1.0)
 
         allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N))
+	!debugging
+	allocate(fux(N),fuy(N),fun(N),fut(N))
+	!\debugging
 	allocate(rarc(N),uh(N),cxarr(N),uhn(N),un(N),upn(N),ux(N),uy(N),ubx(bsize),uby(bsize))
         args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 	
@@ -82,6 +88,8 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 	do i =1,N
 		cxarr(i) = complex(uh(i),0.0)
 	enddo
+	
+	open(1,file='st.txt') !for debugging
 
 	call specder(0.0,real(2*pi,kind=4),N,cxarr,uhn) !spectral derivative of U^h gives us U^h_t, which is equal to u^h_n
 	do i = 1,N
@@ -92,8 +100,21 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 		det = nhat(1)*that(2)-nhat(2)*that(1) !same for tangential derivative
 		ux(i) = 1.0/det*(un(i)*that(2)-0*nhat(2)) !the zero comes from the fact that we know u_t to be 0
 		uy(i) = 1.0/det*(0*nhat(1)-un(i)*that(1))
-	enddo
+		
+		!debugging
+                xin(i) = 1.0 + rarc(i)*cos(tarc(i)) !x coordinates
+                yin(i) = rarc(i)*sin(tarc(i))! y coordinates
+		fux(i) = exactx(xin(i),yin(i))
+		fuy(i) = exacty(xin(i),yin(i))
+		fun(i) = fux(i)*nhat(1)+fuy(i)*nhat(2)
+		fut(i) = fux(i)*that(1)+fuy(i)*that(2)
+		
+		write(1,*) fun(i)-uhn(i),upn(i)
 
+		!\debugging
+		
+	enddo
+	
 	do i = 1,bsize !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
 		temp = atan2(p(b(i),2),p(b(i),1)-1.0d0) !find the angle at which point i is along the boundary
 		if(temp<0) then
@@ -101,19 +122,17 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 		endif
 		j = upper(temp,tarc) !In our array of angles, find the index which is right above our point
 		k = lower(temp,tarc) !Find the one right below
-		ubx(i) = interp1d(temp,tarc(k-1),tarc(j+1),ux(k-1),ux(j+1)) !interpolate x derivative boundary
-		uby(i) = interp1d(temp,tarc(k-1),tarc(j+1),uy(k-1),uy(j+1)) !same for y
+
+		ubx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j)) !interpolate x derivative boundary
+		uby(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
+
 	enddo
-
-	!FIXING THE LAST COUPLE OF ELEMENTS
-!	ubx(bsize) = (ubx(bsize-1)+ubx(bsize-2))/2
-!	uby(bsize-1) = (uby(bsize-2)+uby(bsize-3))/2
-
+	
 	write(*,*) ('Taking derivatives...')
 	call firstder(solx,p,t,b,ubx)
 	call firstder(soly,p,t,b,uby)
 	
-
+	close(1)
 
 end subroutine derpois
 
