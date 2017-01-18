@@ -3,61 +3,65 @@ MODULE mesh
 
 	CONTAINS
 
-	FUNCTION exact(x,y) !known solution to Poisson equation (for debugging purposes)
+	FUNCTION exact(x,y,d1,d2,d3) !known solution to Poisson equation (for debugging purposes)
 		implicit none
-		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
-		real(kind=8),intent(in):: x,y
+		real(kind=8)::pi
+		real(kind=8),intent(in):: x,y,d1,d2,d3
 		real(kind=8) exact
+		pi = 4*atan(1.0)
 
-		exact = 1.0/8.0*x**4+0.074196117973385-0.207229068524213*x**2-0.031560975505360*(x**4-4*(x**2)*(y**2))
+
+		exact = 1.0/8.0*x**4+d1+d2*x**2+d3*(x**4-4*(x**2)*(y**2))
 
 !		exact = 1-(x*x+y*y) 
 		!exact = x*(1-x)*y*(1-y)
 		!exact = (-1)*0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
 		END FUNCTION exact	
-	FUNCTION foo(x,y) !right side of the equation
+	FUNCTION foo(x,y,d1,d2,d3) !right side of the equation
 		implicit none
 		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
-		real(kind=8),intent(in):: x,y
+		real(kind=8),intent(in):: x,y,d1,d2,d3
 		real(kind=8):: foo
 		
-		foo = 3.0/2.0*x**2-2*0.207229068524213-0.031560975505360*(12*x**2-4*2*y**2-4*2*x**2)
+
+		foo = 3.0/2.0*x**2+2*d2+d3*(12*x**2-4*2*y**2-4*2*x**2)
 !		foo = -4.0 
 		!foo = 2*(x*x-x+y*y-y)
 		!foo = sin(pi*x)*sin(pi*y)
 		END FUNCTION foo
 
-	function fx(x,y) !x derivative of rhs
+	function fx(x,y,d1,d2,d3) !x derivative of rhs
 		implicit none
-		real(kind=8)::x,y,fx
+		real(kind=8)::x,y,d1,d2,d3,fx
 
-		fx = 3*x-0.031560975505360*(24*x-4*4*x)
+		fx =3*x+d3*(24*x-4*4*x)
 	endfunction fx
 
-	function fy(x,y) !y derivative of rhs
+	function fy(x,y,d1,d2,d3) !y derivative of rhs
 		implicit none
-		real(kind=8)::x,y,fy
+		real(kind=8)::x,y,d1,d2,d3,fy
 
-		fy = (1)*0.031560975505360*4*4*y
+		fy =(-1)*d3*4*4*y
 	endfunction fy
 
-	function exactx(x,y) !x derivative of solution 
+	function exactx(x,y,d1,d2,d3) !x derivative of solution 
 		implicit none
-		real(kind=8)::x,y,exactx
+		real(kind=8)::x,y,d1,d2,d3,exactx
 		
-		exactx = 1.0/2.0*x**3-0.207229068524213*2*x-0.031560975505360*(4*x**3-8*x*y**2)
+		exactx = 1.0/2.0*x**3+d2*2*x+d3*(4*x**3-8*x*y**2)
 	endfunction exactx
 
-	function exacty(x,y) !y derivative of solution
+	function exacty(x,y,d1,d2,d3) !y derivative of solution
 		implicit none
-		real(kind=8)::x,y,exacty
+		real(kind=8)::x,y,d1,d2,d3,exacty
 
-		exacty = (0.031560975505360)*8*y*x**2
+		exacty = (-1)*d3*8*y*x**2
 	endfunction exacty
 
 
-	SUBROUTINE firstder (x,p,t,b,u) !solves given the boundary u 
+	SUBROUTINE firstder (d1,d2,d3,x,p,t,b,u,xory) !solves given the boundary u 
 	implicit none
+	integer::xory !x or y derivative? x=0,y=1
         integer(kind=8)::N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
         integer, dimension(:,:)::t
         integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
@@ -65,6 +69,7 @@ MODULE mesh
         real(kind=8), dimension(:),allocatable::fu,val1,val2,arr,x,err !array of vertices along edge, array of <integral>g_i*f
         real(kind=8), dimension(3,3)::A !We will use this array in the process of finding equations of planes
         real::det,temp !determinants of matrices, values to insert in sparse matrix
+	real(kind=8)::d1,d2,d3
 	real(kind=8),dimension(:)::u
         
 	NT = size(t(:,1))
@@ -102,8 +107,14 @@ MODULE mesh
                         val1(q+j) = (-1)*(A(1,j/3+1)*A(1,modulo(j,3)+1)+A(2,j/3+1)*A(2,modulo(j,3)+1))*det*0.5
                 end do
 		q = q+9
-
-                temp = foo((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)) !2d midpoint rule
+		
+		if(xory==0)then
+	                temp = fx((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0),d1,d2,d3) !2d midpoint rule
+		elseif(xory==1)then
+	                temp = fy((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0),d1,d2,d3) !2d midpoint rule
+		else
+			write(*,*) "Wrong X/Y selection value"
+		endif
 
                 fu(t(i,1)) = fu(t(i,1)) + det*0.5*temp/3.0 !Here, we add the result of the convolution of the basis function with the right hand side of the Poisson equation, which gives us the right hand side vector in the finite element equation.
                 fu(t(i,2)) = fu(t(i,2)) + det*0.5*temp/3.0
@@ -177,7 +188,7 @@ MODULE mesh
 	endsubroutine firstder
 
 
-	SUBROUTINE poissolve(src_loc,x,src_val) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
+	SUBROUTINE poissolve(d1,d2,d3,src_loc,x,src_val) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
 	implicit none
         integer(kind=8)::N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
         integer, dimension(:,:),allocatable::t
@@ -185,7 +196,7 @@ MODULE mesh
         real(kind=8), dimension(:,:),allocatable::p,src_loc !array of points, array of triangle vertices, and big L finite element array
         real(kind=8), dimension(:),allocatable::fu,val1,val2,arr,src_val,x !array of vertices along edge, array of <integral>g_i*f
         real(kind=8), dimension(3,3)::A !We will use this array in the process of finding equations of planes
-        real(kind=8)::eps,del,kap,det,temp !determinants of matrices, values to insert in sparse matrix
+        real(kind=8)::d1,d2,d3,eps,del,kap,det,temp !determinants of matrices, values to insert in sparse matrix
 	call distmesh(p,t,b,eps,del,kap) !Builds p,t, and b arrays for later use. 
 	NT = size(t(:,1))
         NV = size(p(:,1))
@@ -224,7 +235,7 @@ MODULE mesh
                 end do
 		q = q+9
 
-                temp = foo((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)) !2d midpoint rule
+                temp = foo((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0),d1,d2,d3) !2d midpoint rule
 
                 fu(t(i,1)) = fu(t(i,1)) + det*0.5*temp/3.0 !Here, we add the result of the convolution of the basis function with the right hand side of the Poisson equation, which gives us the right hand side vector in the finite element equation.
                 fu(t(i,2)) = fu(t(i,2)) + det*0.5*temp/3.0

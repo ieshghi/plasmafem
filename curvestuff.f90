@@ -34,7 +34,7 @@ function lower(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S 
 	endif
 end function lower
 
-subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson equation with first derivatives to second order error.
+subroutine derpois(d1,d2,d3,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson equation with first derivatives to second order error.
 	!ALSO IMPORTANT (less so) once done debugging, outputting ubx,uby, and b is unnecessary
 	use mesh
 	implicit none
@@ -43,7 +43,7 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 	!for debugging
 	real(kind=8),dimension(:),allocatable::fux,fuy,fun,fut
 	!\for debugging
-        real(kind=8)::pi,ds,eps,del,kap,L,infi
+        real(kind=8)::d1,d2,d3,pi,ds,eps,del,kap,L,infi
         real(kind=8),dimension(2)::that,nhat,der,dder
 	real(kind=8),dimension(2,2)::flipmat
         real(kind=8),dimension(7)::args
@@ -52,11 +52,12 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 	integer,dimension(:,:),allocatable::t
         integer::i,j,k,N,m,bsize
 	complex(kind=8),dimension(:),allocatable::cxarr
-	
+
 	call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
+	call switchpars(eps,del,kap,d1,d2,d3)
 
 	bsize = size(b)
-	N = 6*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
+	N = 5*size(b) !we want the size of our edge decomposition to be comparable to that of the FEM, but maybe more accurate
         pi = 4*atan(1.0)
 
         allocate(xin(N),yin(N),dx(N),dy(N),ddx(N),ddy(N),Gn(N,N))
@@ -64,14 +65,14 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 	allocate(fux(N),fuy(N),fun(N),fut(N))
 	!\debugging
 	allocate(rarc(N),uh(N),cxarr(N),uhn(N),un(N),upn(N),ux(N),uy(N),ubx(bsize),uby(bsize))
-        args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
+        args = (/d1,d2,d3,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 	
-        call arcparam(real(0.0,kind=8),2*pi,tarc,ds,N,L,eps,del,kap) !generate a parametrisation of the boundary. Tarc is the array
+        call arcparam(real(0.0,kind=8),2*pi,tarc,ds,N,L,d1,d2,d3) !generate a parametrisation of the boundary. Tarc is the array
 ! of angles which give equidistant points along the boundary
 
         do i = 1,N
-                der = dxdy(tarc(i),eps,del,kap) !array of first derivatives at those points
-                dder = ddxddy(tarc(i),eps,del,kap) !array of second derivatives
+                der = dxdy(tarc(i),d1,d2,d3) !array of first derivatives at those points
+                dder = ddxddy(tarc(i),d1,d2,d3) !array of second derivatives
                 rarc(i) = findr_fast(tarc(i),args) !array of radii away from the center of the tokamak (1,0)
                 xin(i) = 1.0 + rarc(i)*cos(tarc(i)) !x coordinates
                 yin(i) = rarc(i)*sin(tarc(i))! y coordinates
@@ -82,7 +83,7 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
         enddo
 
         call getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N) !as the name says, solves for G_n
-        call gradyoupee(upx,upy,eps,del,kap,ds,N,m,sol) !we have the gradient of U^p. 
+        call gradyoupee(upx,upy,d1,d2,d3,ds,N,m,sol) !we have the gradient of U^p. 
 	call solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) ! Solves for U^h
 
 	do i =1,N
@@ -104,16 +105,18 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 		!debugging
                 xin(i) = 1.0 + rarc(i)*cos(tarc(i)) !x coordinates
                 yin(i) = rarc(i)*sin(tarc(i))! y coordinates
-		fux(i) = exactx(xin(i),yin(i))
-		fuy(i) = exacty(xin(i),yin(i))
+		fux(i) = exactx(xin(i),yin(i),d1,d2,d3)
+		fuy(i) = exacty(xin(i),yin(i),d1,d2,d3)
 		fun(i) = fux(i)*nhat(1)+fuy(i)*nhat(2)
 		fut(i) = fux(i)*that(1)+fuy(i)*that(2)
 		
-		write(1,*) fun(i)-uhn(i),upn(i)
-
+		fut(i) = (fun(i)-upn(i))/uhn(i)
+		write(1,*) upn(i), uhn(i)
 		!\debugging
 		
 	enddo
+	
+!	write(1,*) sum(fut)/(max(1,size(fut))), sqrt(float(size(p(:,1))))
 	
 	do i = 1,bsize !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
 		temp = atan2(p(b(i),2),p(b(i),1)-1.0d0) !find the angle at which point i is along the boundary
@@ -129,8 +132,8 @@ subroutine derpois(eps,del,kap,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson
 	enddo
 	
 	write(*,*) ('Taking derivatives...')
-	call firstder(solx,p,t,b,ubx)
-	call firstder(soly,p,t,b,uby)
+	call firstder(d1,d2,d3,solx,p,t,b,ubx,0)
+	call firstder(d1,d2,d3,soly,p,t,b,uby,1)
 	
 	close(1)
 
@@ -141,23 +144,22 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 	implicit none
 	integer::N,i,j,info
 	integer,dimension(N)::pvt
-	real(kind=8)::ds
-	real(kind=8),dimension(N)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,zeros,rhs
+	real(kind=8)::ds,norm
+	real(kind=8),dimension(N)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,rhs
 	real(kind=8),dimension(N,N)::lhs,gn
 	real(kind=8),dimension(2)::ut
 	complex(kind=8),dimension(N)::pot,potn,sigma,mu
 	complex(kind=8),dimension(N,2)::grad	
 
-
-	do i = 1,N
-		ones(i) = 1.0
-		zeros(i) = 0.0
-		rnx(i) = dy(i)/sqrt(dx(i)**2+dy(i)**2)
-		rny(i) = (-1)*dx(i)/sqrt(dx(i)**2+dy(i)**2)
-		ut = (/dx(i),dy(i)/)/sqrt(dx(i)**2+dy(i)**2)
-		mu(i) = cmplx(0.0,0.0)
+	do i = 1,N !In this loop, we build all the arrays necessary for l2dacquadwrapl to run
+		ones(i) = 1.0 
+		norm = sqrt(dx(i)**2+dy(i)**2)
+		rnx(i) = (1)*dy(i)/norm !x-component of normal derivative vector
+		rny(i) = (-1)*dx(i)/norm !y-component
+		ut = (/dx(i)/norm,dy(i)/norm/) !tangent unit vector
+		mu(i) = cmplx(0.0,0.0) !the mu element in this integration is zero
 		sigma(i) = cmplx(upx(i)*ut(1)+upy(i)*ut(2))
-		do j=1,N
+		do j=1,N !this nested loop builds the left hand side matrix, which should be 1/2*eye(N) + ds*G + ds^2*ones(N,N)
 			if(i==j) then
 				lhs(i,j) = 0.5 + ds*gn(i,j) + ds**2
 			else
@@ -166,20 +168,20 @@ subroutine solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) !solves linear system for
 		enddo
 	enddo
 
-	call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,N,1,sigma,0,mu,4,1,4,-1,pot,potn,grad)
-
+	call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,N,1,sigma,0,mu,4,1,4,-1,pot,potn,grad) !Call integration routine
 
 	do i = 1,N
 		rhs(i) = (-1)*real(pot(i))
+		pvt(i) = 0
 	enddo
 
-	call dgesv(N,1,lhs,N,pvt,rhs,N,info)
-       
+	call dgesv(N,1,lhs,N,pvt,rhs,N,info) !Solve linear system
+      	
 	do i = 1,N
 		uh(i) = rhs(i)
 	enddo
 
-end subroutine solveyouh
+endsubroutine solveyouh
 
 
 subroutine getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N) !xin,yin should come from the arcparam subroutine, N is their length
@@ -195,6 +197,9 @@ subroutine getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N) !xin,yin should come from the ar
         do i=1,N
                 xp(i,1) = xin(i)
                 xp(i,2) = yin(i)
+		do j=1,n
+			gn(i,j)=0
+		enddo
         enddo
         do i=1,N
                 do j=1,N
@@ -226,30 +231,30 @@ function gy(x,xp)
 end function gy
 
 
-subroutine gradyoupee(upx,upy,eps,del,kap,ds,nb,m,x) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
+subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
         use mesh
         implicit none
         integer::n,m,i,nb
         real(kind=8), dimension(:,:), allocatable::srcloc,targloc,targnorm
         real(kind=8), dimension(:), allocatable::srcval,psol,x,y,tarc,r,upx,upy
         complex(kind=8), dimension(:), allocatable::pot
-        real(kind=8):: del,eps,kap,pi,ds,l
+        real(kind=8):: d1,d2,d3,pi,ds,l
         real(kind=8),dimension(7)::args
         real(kind=8),dimension(2)::der
 
         pi = 4*atan(1.0)
-	call poissolve(srcloc,x,srcval)
+	call poissolve(d1,d2,d3,srcloc,x,srcval)
 	n = size(srcval)
         m = nb
-        call arcparam(real(0.0,kind=8),2*pi,tarc,ds,m,l,eps,del,kap)
+        call arcparam(real(0.0,kind=8),2*pi,tarc,ds,m,l,d1,d2,d3)
         allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
-        args = (/eps,del,kap,real(0.7,kind=8),real(1e-10,kind =8),real(1.0,kind=8),real(0.0,kind=8)/)
+        args = (/d1,d2,d3,real(0.7,kind=8),real(1e-10,kind =8),real(1.0,kind=8),real(0.0,kind=8)/)
         do i = 1,m
                 r(i) = findr_fast(tarc(i),args)
                 targloc(1,i) = 1 + r(i)*cos(tarc(i))
                 targloc(2,i) = r(i)*sin(tarc(i))
-                der = dxdy(tarc(i),eps,del,kap)
+                der = dxdy(tarc(i),d1,d2,d3)
                 targnorm(1,i) = der(2)/sqrt(der(1)**2+der(2)**2)
                 targnorm(2,i) = (-1)*der(1)/sqrt(der(1)**2+der(2)**2)
         enddo	
@@ -313,16 +318,16 @@ SUBROUTINE specder(xmin,xmax,N,input,deriv)  !Takes spectral derivatives of orde
 END SUBROUTINE specder
 
 
-subroutine arcparam(a,b,tarc,darc,N,L,eps,del,kap) !Provides N evenly spaced points along a curve parametrised by r,theta between theta = a and theta = b
+subroutine arcparam(a,b,tarc,darc,N,L,d1,d2,d3) !Provides N evenly spaced points along a curve parametrised by r,theta between theta = a and theta = b
 	implicit none
 	integer::N,i,j
-	real(kind=8) a,b,darc,L,tinit,tfguess,tfupdate,currerr,ds,eps,del,kap
+	real(kind=8) a,b,darc,L,tinit,tfguess,tfupdate,currerr,ds,d1,d2,d3
 	real(kind=8),dimension(2)::der
 	real(kind=8),dimension(:),allocatable::t,w,tarc
 	call lgmap(t,w,a,b,1)
 	L = 0
 	do i = 0,size(t)
-		der = dxdy(t(i),eps,del,kap)
+		der = dxdy(t(i),d1,d2,d3)
 		L = L + sqrt(der(1)**2+der(2)**2)*w(i)
 	end do
 	darc = L/N
@@ -343,11 +348,11 @@ subroutine arcparam(a,b,tarc,darc,N,L,eps,del,kap) !Provides N evenly spaced poi
 			call lgmap(t,w,tinit,tfguess,0)
 			ds = 0
 			do j=1,size(t)
-				der = dxdy(t(j),eps,del,kap)
+				der = dxdy(t(j),d1,d2,d3)
 				ds = ds + sqrt(der(1)**2+der(2)**2)*w(j)
 			end do
 			currerr = ds-darc
-			der = dxdy(tfguess,eps,del,kap)
+			der = dxdy(tfguess,d1,d2,d3)
 			tfupdate = tfguess - currerr/sqrt(der(1)**2+der(2)**2)
 		end do
 		tarc(i) = tfguess
@@ -405,13 +410,13 @@ subroutine lgmap(x,w,a,b,mode) !does 16-point or 1000-point gauss-legendre quadr
 	end do
 end subroutine lgmap
 
-function ddxddy(theta,eps,del,kap)
+function ddxddy(theta,d1,d2,d3)
 	implicit none
 	real(kind=8),parameter::infi = 1e-5
-        real(kind=8) ::theta,eps,del,kap,tp,tm
+        real(kind=8) ::theta,d1,d2,d3,tp,tm
         real(kind=8), dimension(2)::ddxddy,vec
         real(kind=8),dimension(7)::args
-        args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
+        args = (/d1,d2,d3,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 
 	tp = theta + infi
 	tm = theta - infi
@@ -421,15 +426,15 @@ function ddxddy(theta,eps,del,kap)
 
 end function ddxddy
 
-function dxdy(theta,eps,del,kap) !takes dx/dtheta and dy/dtheta @ theta on a tokamak defined by eps,del,kap
+function dxdy(theta,d1,d2,d3) !takes dx/dtheta and dy/dtheta @ theta on a tokamak defined by eps,del,kap
 	implicit none
 	real(kind=8),parameter::infi = 1e-8
-	real(kind=8) ::theta,eps,del,kap
+	real(kind=8) ::theta,d1,d2,d3
 	real(kind=8), dimension(2)::dxdy
 	real(kind=8),dimension(7)::args
 	
 
-	args = (/eps,del,kap,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
+	args = (/d1,d2,d3,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 	
 	dxdy(1) = (findr_fast(theta+infi,args)*cos(theta+infi)-findr_fast(theta-infi,args)*cos(theta-infi))/(2*infi)
 	dxdy(2) = (findr_fast(theta+infi,args)*sin(theta+infi)-findr_fast(theta-infi,args)*sin(theta-infi))/(2*infi)
@@ -439,24 +444,24 @@ end function dxdy
 function findr_fast(theta,args) !easier to call that findr itself, takes an array instead of a bunch of individual args
 	implicit none
 	real(kind=8),dimension(7)::args
-	real(kind=8)::eps,del,kap,guess,theta,errtol,centx,centy
+	real(kind=8)::d1,d2,d3,guess,theta,errtol,centx,centy
 	real(kind=8)::findr_fast
-	eps = args(1)
-	del = args(2)
-	kap = args(3)
+	d1 = args(1)
+	d2 = args(2)
+	d3 = args(3)
 	guess = args(4)
 	errtol = args(5)
 	centx = args(6)
 	centy = args(7)
 
-	findr_fast = findr(eps,del,kap,theta,guess,errtol,centx,centy)
+	findr_fast = findr(d1,d2,d3,theta,guess,errtol,centx,centy)
 
 end function findr_fast
 
-function findr(eps,del,kap,theta,guess,errtol,centx,centy) !newton's method on a tokamak defined by eps,del,kap
+function findr(d1,d2,d3,theta,guess,errtol,centx,centy) !newton's method on a tokamak defined by eps,del,kap
 	implicit none
 	integer::i
-	real(kind=8)::eps,del,kap,theta,findr,guess,currerr,errtol,centx,centy,rp,rm,dfr,one,pi
+	real(kind=8)::d1,d2,d3,theta,findr,guess,currerr,errtol,centx,centy,rp,rm,dfr,one,pi
 	real(kind=8),dimension(2)::uvec,x,center,xp,xm
 	one = 1.0
 	center(1) = centx
@@ -470,7 +475,7 @@ function findr(eps,del,kap,theta,guess,errtol,centx,centy) !newton's method on a
 		x(i) = findr*uvec(i) + center(i)
 	end do 
 	
-	currerr = tokam(x(1),x(2),one,eps,del,kap)
+	currerr = tokam(x(1),x(2),one,d1,d2,d3)
 	
 	do while (abs(currerr) > errtol)
 		rp = findr+errtol
@@ -480,20 +485,19 @@ function findr(eps,del,kap,theta,guess,errtol,centx,centy) !newton's method on a
 			xm(i) = rm*uvec(i)
 		end do
 			
-		dfr=(tokam(centx+xp(1),centy+xp(2),one,eps,del,kap)-tokam(centx+xm(1),centy+xm(2),one,eps,del,kap))/(2*errtol)
+		dfr=(tokam(centx+xp(1),centy+xp(2),one,d1,d2,d3)-tokam(centx+xm(1),centy+xm(2),one,d1,d2,d3))/(2*errtol)
 		findr = findr - currerr/dfr    
 		do i=1,2
 			x(i) = findr*uvec(i) + center(i)
 		end do
-		currerr = tokam(x(1),x(2),one,eps,del,kap)
+		currerr = tokam(x(1),x(2),one,d1,d2,d3)
 	end do
 end function findr
 
-function tokam(x,y,c,eps,del,kap) !tokamak function
+function tokam(x,y,c,d1,d2,d3) !tokamak function
 	implicit none
-	real(kind=8) :: x,y,c,eps,del,kap,d1,d2,d3,tokam
+	real(kind=8) :: x,y,c,d1,d2,d3,tokam
 
-	call switchpars(eps,del,kap,d1,d2,d3)
 	tokam = c/8*x**4 + d2*x**2 + d3*(x**4-4*x**2*y**2)+d1
 end function tokam
 
