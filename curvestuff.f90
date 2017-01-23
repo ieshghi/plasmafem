@@ -34,7 +34,7 @@ function lower(theta,tarc) !THIS FUNCTION NEEDS TO BE CHECKED! NOT SURE IF IT'S 
 	endif
 end function lower
 
-subroutine derpois(d1,d2,d3,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson equation with first derivatives to second order error.
+subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson equation with first derivatives to second order error.
 	!ALSO IMPORTANT (less so) once done debugging, outputting ubx,uby, and b is unnecessary
 	use mesh
 	implicit none
@@ -43,7 +43,7 @@ subroutine derpois(d1,d2,d3,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson eq
 	!for debugging
 	real(kind=8),dimension(:),allocatable::fux,fuy,fun,fut
 	!\for debugging
-        real(kind=8)::d1,d2,d3,pi,ds,eps,del,kap,L,infi
+        real(kind=8)::d1,d2,d3,pi,ds,eps,del,kap,L,infi,findif
         real(kind=8),dimension(2)::that,nhat,der,dder
 	real(kind=8),dimension(2,2)::flipmat
         real(kind=8),dimension(7)::args
@@ -67,12 +67,12 @@ subroutine derpois(d1,d2,d3,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson eq
 	allocate(rarc(N),uh(N),cxarr(N),uhn(N),un(N),upn(N),ux(N),uy(N),ubx(bsize),uby(bsize))
         args = (/d1,d2,d3,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 	
-        call arcparam(real(0.0,kind=8),2*pi,tarc,ds,N,L,d1,d2,d3) !generate a parametrisation of the boundary. Tarc is the array
+        call arcparam(real(0.0,kind=8),2*pi,tarc,ds,N,L,d1,d2,d3,infi,findif) !generate a parametrisation of the boundary. Tarc is the array
 ! of angles which give equidistant points along the boundary
 
         do i = 1,N
-                der = dxdy(tarc(i),d1,d2,d3) !array of first derivatives at those points
-                dder = ddxddy(tarc(i),d1,d2,d3) !array of second derivatives
+                der = dxdy(tarc(i),d1,d2,d3,findif) !array of first derivatives at those points
+                dder = ddxddy(tarc(i),d1,d2,d3,findif) !array of second derivatives
                 rarc(i) = findr_fast(tarc(i),args) !array of radii away from the center of the tokamak (1,0)
                 xin(i) = 1.0 + rarc(i)*cos(tarc(i)) !x coordinates
                 yin(i) = rarc(i)*sin(tarc(i))! y coordinates
@@ -83,7 +83,7 @@ subroutine derpois(d1,d2,d3,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson eq
         enddo
 
         call getgnmat(Gn,xin,yin,dx,dy,ddx,ddy,N) !as the name says, solves for G_n
-        call gradyoupee(upx,upy,d1,d2,d3,ds,N,m,sol) !we have the gradient of U^p. 
+        call gradyoupee(upx,upy,d1,d2,d3,ds,N,m,sol,infi,findif) !we have the gradient of U^p. 
 	call solveyouh(Gn,xin,yin,dx,dy,upx,upy,uh,N,ds) ! Solves for U^h
 
 	do i =1,N
@@ -93,6 +93,7 @@ subroutine derpois(d1,d2,d3,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson eq
 	open(1,file='st.txt') !for debugging
 
 	call specder(0.0,real(2*pi,kind=4),N,cxarr,uhn) !spectral derivative of U^h gives us U^h_t, which is equal to u^h_n
+
 	do i = 1,N
 		nhat = (/(-1)*dy(i)/sqrt(dx(i)**2+dy(i)**2),dx(i)/sqrt(dx(i)**2+dy(i)**2)/)
 		that = (/dx(i)/sqrt(dx(i)**2+dy(i)**2),dy(i)/sqrt(dx(i)**2+dy(i)**2)/)
@@ -109,13 +110,12 @@ subroutine derpois(d1,d2,d3,infi,solx,soly,sol,p,t,b,ubx,uby) !Solves poisson eq
 		fuy(i) = exacty(xin(i),yin(i),d1,d2,d3)
 		fun(i) = fux(i)*nhat(1)+fuy(i)*nhat(2)
 		fut(i) = fux(i)*that(1)+fuy(i)*that(2)
-		
 		fut(i) = (fun(i)-upn(i))/uhn(i)
-		write(1,*) upn(i), uhn(i)
+		
 		!\debugging
 		
 	enddo
-	
+	write(1,*) L
 !	write(1,*) sum(fut)/(max(1,size(fut))), sqrt(float(size(p(:,1))))
 	
 	do i = 1,bsize !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
@@ -231,14 +231,14 @@ function gy(x,xp)
 end function gy
 
 
-subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
+subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x,infi,findif) !Computes u^p on the boundary of the tokamak using QBX-FMM integration methods.
         use mesh
         implicit none
         integer::n,m,i,nb
         real(kind=8), dimension(:,:), allocatable::srcloc,targloc,targnorm
         real(kind=8), dimension(:), allocatable::srcval,psol,x,y,tarc,r,upx,upy
         complex(kind=8), dimension(:), allocatable::pot
-        real(kind=8):: d1,d2,d3,pi,ds,l
+        real(kind=8):: d1,d2,d3,pi,ds,l,infi,findif
         real(kind=8),dimension(7)::args
         real(kind=8),dimension(2)::der
 
@@ -246,7 +246,7 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x) !Computes u^p on the boundary 
 	call poissolve(d1,d2,d3,srcloc,x,srcval)
 	n = size(srcval)
         m = nb
-        call arcparam(real(0.0,kind=8),2*pi,tarc,ds,m,l,d1,d2,d3)
+        call arcparam(real(0.0,kind=8),2*pi,tarc,ds,m,l,d1,d2,d3,infi,findif)
         allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
         args = (/d1,d2,d3,real(0.7,kind=8),real(1e-10,kind =8),real(1.0,kind=8),real(0.0,kind=8)/)
@@ -254,7 +254,7 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x) !Computes u^p on the boundary 
                 r(i) = findr_fast(tarc(i),args)
                 targloc(1,i) = 1 + r(i)*cos(tarc(i))
                 targloc(2,i) = r(i)*sin(tarc(i))
-                der = dxdy(tarc(i),d1,d2,d3)
+                der = dxdy(tarc(i),d1,d2,d3,findif)
                 targnorm(1,i) = der(2)/sqrt(der(1)**2+der(2)**2)
                 targnorm(2,i) = (-1)*der(1)/sqrt(der(1)**2+der(2)**2)
         enddo	
@@ -267,8 +267,6 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x) !Computes u^p on the boundary 
 	enddo
 
 end subroutine gradyoupee
-
-
 
 SUBROUTINE specder(xmin,xmax,N,input,deriv)  !Takes spectral derivatives of order N of a function evaluated at N points.
         USE, INTRINSIC :: iso_c_binding
@@ -317,17 +315,16 @@ SUBROUTINE specder(xmin,xmax,N,input,deriv)  !Takes spectral derivatives of orde
         end do
 END SUBROUTINE specder
 
-
-subroutine arcparam(a,b,tarc,darc,N,L,d1,d2,d3) !Provides N evenly spaced points along a curve parametrised by r,theta between theta = a and theta = b
+subroutine arcparam(a,b,tarc,darc,N,L,d1,d2,d3,infi,findif) !Provides N evenly spaced points along a curve parametrised by r,theta between theta = a and theta = b
 	implicit none
 	integer::N,i,j
-	real(kind=8) a,b,darc,L,tinit,tfguess,tfupdate,currerr,ds,d1,d2,d3
+	real(kind=8) a,b,darc,L,tinit,tfguess,tfupdate,currerr,ds,d1,d2,d3,infi,findif
 	real(kind=8),dimension(2)::der
 	real(kind=8),dimension(:),allocatable::t,w,tarc
 	call lgmap(t,w,a,b,1)
 	L = 0
-	do i = 0,size(t)
-		der = dxdy(t(i),d1,d2,d3)
+	do i = 1,size(t)
+		der = dxdy(t(i),d1,d2,d3,findif)
 		L = L + sqrt(der(1)**2+der(2)**2)*w(i)
 	end do
 	darc = L/N
@@ -342,17 +339,17 @@ subroutine arcparam(a,b,tarc,darc,N,L,d1,d2,d3) !Provides N evenly spaced points
 		tfguess = tinit+darc
 		tfupdate = tfguess
 		currerr=1
-		do while(abs(currerr) > 1e-6)
+		do while(abs(currerr) > infi)
 			deallocate(t,w)
 			tfguess = tfupdate
 			call lgmap(t,w,tinit,tfguess,0)
 			ds = 0
 			do j=1,size(t)
-				der = dxdy(t(j),d1,d2,d3)
+				der = dxdy(t(j),d1,d2,d3,findif)
 				ds = ds + sqrt(der(1)**2+der(2)**2)*w(j)
 			end do
 			currerr = ds-darc
-			der = dxdy(tfguess,d1,d2,d3)
+			der = dxdy(tfguess,d1,d2,d3,findif)
 			tfupdate = tfguess - currerr/sqrt(der(1)**2+der(2)**2)
 		end do
 		tarc(i) = tfguess
@@ -373,6 +370,8 @@ subroutine lgmap(x,w,a,b,mode) !does 16-point or 1000-point gauss-legendre quadr
 		filename = 'sixt'
 	else if (mode == 1) then
 		filename = 'thou'
+	else if (mode ==2) then
+		filename = 'teth'
 	else
 		write(*,*) 'mode must be 0 or 1'
 	end if
@@ -410,9 +409,9 @@ subroutine lgmap(x,w,a,b,mode) !does 16-point or 1000-point gauss-legendre quadr
 	end do
 end subroutine lgmap
 
-function ddxddy(theta,d1,d2,d3)
+function ddxddy(theta,d1,d2,d3,infi)
 	implicit none
-	real(kind=8),parameter::infi = 1e-5
+	real(kind=8)::infi
         real(kind=8) ::theta,d1,d2,d3,tp,tm
         real(kind=8), dimension(2)::ddxddy,vec
         real(kind=8),dimension(7)::args
@@ -426,14 +425,13 @@ function ddxddy(theta,d1,d2,d3)
 
 end function ddxddy
 
-function dxdy(theta,d1,d2,d3) !takes dx/dtheta and dy/dtheta @ theta on a tokamak defined by eps,del,kap
+function dxdy(theta,d1,d2,d3,infi) !takes dx/dtheta and dy/dtheta @ theta on a tokamak defined by eps,del,kap
 	implicit none
-	real(kind=8),parameter::infi = 1e-8
+	real(kind=8)::infi
 	real(kind=8) ::theta,d1,d2,d3
 	real(kind=8), dimension(2)::dxdy
 	real(kind=8),dimension(7)::args
 	
-
 	args = (/d1,d2,d3,real(0.7,kind=8),real(infi,kind=8),real(1.0,kind=8),real(0.0,kind=8)/)
 	
 	dxdy(1) = (findr_fast(theta+infi,args)*cos(theta+infi)-findr_fast(theta-infi,args)*cos(theta-infi))/(2*infi)
@@ -444,7 +442,7 @@ end function dxdy
 function findr_fast(theta,args) !easier to call that findr itself, takes an array instead of a bunch of individual args
 	implicit none
 	real(kind=8),dimension(7)::args
-	real(kind=8)::d1,d2,d3,guess,theta,errtol,centx,centy
+	real(kind=8)::d1,d2,d3,guess,theta,errtol,centx,centy,findif
 	real(kind=8)::findr_fast
 	d1 = args(1)
 	d2 = args(2)
@@ -500,12 +498,6 @@ function tokam(x,y,c,d1,d2,d3) !tokamak function
 
 	tokam = c/8*x**4 + d2*x**2 + d3*(x**4-4*x**2*y**2)+d1
 end function tokam
-
-function draw(x,y) !just a weird shape, for testing purposes
-	implicit none
-	real(kind=8) :: x,y,draw
-	draw = x**2 + y**2 - sin(2*y)
-endfunction draw
 
 subroutine switchpars(ep,de,kap,d1,d2,d3) !switches from eps,del,kap to d1,d2,d3
 	implicit none
