@@ -5,9 +5,9 @@ MODULE mesh
 
 	FUNCTION exact(x,y,d1,d2,d3) !known solution to Poisson equation (for debugging purposes)
 		implicit none
-		real(kind=8)::pi
-		real(kind=8),intent(in):: x,y,d1,d2,d3
-		real(kind=8) exact
+		real *8::pi
+		real *8,intent(in):: x,y,d1,d2,d3
+		real *8 exact
 		pi = 4*atan(1.0)
 
 
@@ -20,8 +20,8 @@ MODULE mesh
 	FUNCTION foo(x,y,d1,d2,d3) !right side of the equation
 		implicit none
 		real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
-		real(kind=8),intent(in):: x,y,d1,d2,d3
-		real(kind=8):: foo
+		real *8,intent(in):: x,y,d1,d2,d3
+		real *8:: foo
 		
 
 		foo = 3.0/2.0*x**2+2*d2+d3*(12*x**2-4*2*y**2-4*2*x**2)
@@ -32,28 +32,28 @@ MODULE mesh
 
 	function fx(x,y,d1,d2,d3) !x derivative of rhs
 		implicit none
-		real(kind=8)::x,y,d1,d2,d3,fx
+		real *8::x,y,d1,d2,d3,fx
 
 		fx =3*x+d3*(24*x-4*4*x)
 	endfunction fx
 
 	function fy(x,y,d1,d2,d3) !y derivative of rhs
 		implicit none
-		real(kind=8)::x,y,d1,d2,d3,fy
+		real *8::x,y,d1,d2,d3,fy
 
 		fy =(-1)*d3*4*4*y
 	endfunction fy
 
 	function exactx(x,y,d1,d2,d3) !x derivative of solution 
 		implicit none
-		real(kind=8)::x,y,d1,d2,d3,exactx
+		real *8::x,y,d1,d2,d3,exactx
 		
 		exactx = 1.0/2.0*x**3+d2*2*x+d3*(4*x**3-8*x*y**2)
 	endfunction exactx
 
 	function exacty(x,y,d1,d2,d3) !y derivative of solution
 		implicit none
-		real(kind=8)::x,y,d1,d2,d3,exacty
+		real *8::x,y,d1,d2,d3,exacty
 
 		exacty = (-1)*d3*8*y*x**2
 	endfunction exacty
@@ -62,15 +62,15 @@ MODULE mesh
 	SUBROUTINE firstder (d1,d2,d3,x,p,t,b,u,xory) !solves given the boundary u 
 	implicit none
 	integer::xory !x or y derivative? x=0,y=1
-        integer(kind=8)::N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
+        integer *8::N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
         integer, dimension(:,:)::t
         integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
-        real(kind=8), dimension(:,:)::p!array of points, array of triangle vertices, and big L finite element array
-        real(kind=8), dimension(:),allocatable::fu,val1,val2,arr,x,err !array of vertices along edge, array of <integral>g_i*f
-        real(kind=8), dimension(3,3)::A !We will use this array in the process of finding equations of planes
-        real::det,temp !determinants of matrices, values to insert in sparse matrix
-	real(kind=8)::d1,d2,d3
-	real(kind=8),dimension(:)::u
+        real *8, dimension(:,:)::p!array of points, array of triangle vertices, and big L finite element array
+        real *8, dimension(:),allocatable::fu,val1,val2,arr,x,err !array of vertices along edge, array of <integral>g_i*f
+        real *8, dimension(3,3)::A !We will use this array in the process of finding equations of planes
+        real *8::det,temp !determinants of matrices, values to insert in sparse matrix
+	real *8::d1,d2,d3
+	real *8,dimension(:)::u
         
 	NT = size(t(:,1))
         NV = size(p(:,1))
@@ -187,16 +187,15 @@ MODULE mesh
         call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
 	endsubroutine firstder
 
-
 	SUBROUTINE poissolve(d1,d2,d3,src_loc,x,src_val) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
 	implicit none
-        integer(kind=8)::N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
+        integer *8::N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
         integer, dimension(:,:),allocatable::t
         integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
-        real(kind=8), dimension(:,:),allocatable::p,src_loc !array of points, array of triangle vertices, and big L finite element array
-        real(kind=8), dimension(:),allocatable::fu,val1,val2,arr,src_val,x !array of vertices along edge, array of <integral>g_i*f
-        real(kind=8), dimension(3,3)::A !We will use this array in the process of finding equations of planes
-        real(kind=8)::d1,d2,d3,eps,del,kap,det,temp !determinants of matrices, values to insert in sparse matrix
+        real *8, dimension(:,:),allocatable::p,src_loc !array of points, array of triangle vertices, and big L finite element array
+        real *8, dimension(:),allocatable::fu,val1,val2,arr,src_val,x !array of vertices along edge, array of <integral>g_i*f
+        real *8, dimension(3,3)::A !We will use this array in the process of finding equations of planes
+        real *8::d1,d2,d3,eps,del,kap,det,temp !determinants of matrices, values to insert in sparse matrix
 	call distmesh(p,t,b,eps,del,kap) !Builds p,t, and b arrays for later use. 
 	NT = size(t(:,1))
         NV = size(p(:,1))
@@ -305,21 +304,18 @@ MODULE mesh
         do i = 1,N !We want X to have an estimate of the solution to begin with... I start with 0, for lack of a better idea
                 x(i) = 0
         end do
-        temp = 1e-6
+        temp = 1e-14
         i = NB/4
         q = i
 	call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
 	END SUBROUTINE poissolve
-
-
-
-			
+	
 	FUNCTION  linspace(a,b,n) !equivalent of python linspace
         implicit none
-        real, intent(in):: a,b !start and endpoint
+        real *8, intent(in):: a,b !start and endpoint
         integer, intent(in):: n !number of elements
         integer:: i ! loop variable
-        real:: dx, linspace(n)
+        real *8:: dx, linspace(n)
         dx = (b-a)/(n-1) !spacing between x's
         do i = 1,n
                 linspace(i)=a+(i-1)*dx ! fill the output array
@@ -328,8 +324,8 @@ MODULE mesh
 	
 	FUNCTION threedet(m) !Find the determinant of a 3x3 matrix
 		implicit none
-		real(kind=8), dimension(3,3):: m
-		real(kind=8):: threedet
+		real *8, dimension(3,3):: m
+		real *8:: threedet
 
 		threedet =  m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + m(1,3)*m(2,1)*m(3,2)
 		threedet = threedet - m(1,3)*m(2,2)*m(3,1) - m(1,1)*m(2,3)*m(3,2) - m(1,2)*m(2,1)*m(3,3)
@@ -343,16 +339,16 @@ MODULE mesh
 	!b: (1,NE = edge number) array of points on the edge
 		implicit none
 		integer,dimension(:,:),allocatable::t
-		real(kind=8),dimension(:,:),allocatable::p
+		real *8,dimension(:,:),allocatable::p
 		integer,dimension(:),allocatable::b
 		integer::nx,ny,i,j !i,j are loop variables
-		real,dimension(nx)::x !arrays of x and y positions
-		real,dimension(ny)::y
-		real::w,z
+		real *8,dimension(nx)::x !arrays of x and y positions
+		real *8,dimension(ny)::y
+		real *8::w,z
 		!w=1
 		!z=2
-		x = linspace(0.0,1.0,nx)
-		y = linspace(0.0,1.0,ny)
+		x = linspace(0.0d0,1.0d0,nx)
+		y = linspace(0.0d0,1.0d0,ny)
 
 		allocate(p(nx*ny,2),t((nx-1)*(ny-1)*2,3),b((nx+ny)*2-4)) !vertex number = nx*ny, triangle number = (nx-1)*(ny-1)*2	
 		
@@ -392,8 +388,8 @@ MODULE mesh
 		END SUBROUTINE buildmesh
 	
 	SUBROUTINE threeinv(M) !Inverts 3x3 matrix. M is the matrix we want to invert
-			real(kind=8),dimension(3,3)::m
-			real::det,a,b,c,d,e,f,g,h,i
+			real *8,dimension(3,3)::m
+			real *8::det,a,b,c,d,e,f,g,h,i
 			det = threedet(m)
 
 			a = M(2,2)*M(3,3)-M(2,3)*M(3,2)
@@ -421,15 +417,15 @@ MODULE mesh
 
 	SUBROUTINE distmesh(p,t,b,eps,del,kap)
                 implicit none
-                INTEGER(kind=8), PARAMETER :: maxrecs = 1000000
-                INTEGER(kind=8) :: J, NR, ios
+                INTEGER *8, PARAMETER :: maxrecs = 1000000
+                INTEGER *8 :: J, NR, ios
                 CHARACTER(LEN=100) :: inputfile
                 CHARACTER(LEN=1) :: junk
                 integer,dimension(:,:),allocatable::t
-                real(kind=8),dimension(:,:),allocatable::p
-                real(kind=8),dimension(3)::temp
+                real *8,dimension(:,:),allocatable::p
+                real *8,dimension(3)::temp
                 integer,dimension(:),allocatable::b
-		real(kind=8)::eps,del,kap
+		real *8::eps,del,kap
                 NR = 0
 	open(unit=1,file='infiles/params.txt')
 		read(1,*) eps, del, kap
