@@ -38,7 +38,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
   !also important (less so) once done debugging, outputting ubx,uby, and b is unnecessary
   use mesh
   implicit none
-  real *8,dimension(:,:),allocatable::gn,p
+  real *8,dimension(:,:),allocatable::gn,p,tran
   real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly
   !for debugging
   real *8,dimension(:),allocatable::fux,fuy,fun,fut
@@ -55,7 +55,8 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
 
   call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
   call switchpars(eps,del,kap,d1,d2,d3)
-
+  args = (/d1,d2,d3,0.7d0,infi,1.0d0,0.0d0/)!arguments for findr
+  call fftgen(5000,args,tran)!generate the fft file
   bsize = size(b)
   n = 6*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
   pi = 4.0d0*atan(1.0d0)
@@ -65,29 +66,27 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
   allocate(fux(n),fuy(n),fun(n),fut(n))
   !\debugging
   allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ux(n),uy(n),ubx(bsize),uby(bsize))
-  args = (/d1,d2,d3,0.7d0,infi,1.0d0,0.0d0/)
-  
-    call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif) !generate a parametrisation of the boundary. tarc is the array
+  call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
 ! of angles which give equidistant points along the boundary
 
-    do i = 1,n
-    der = dxdy(tarc(i),d1,d2,d3,findif,infi) !array of first derivatives at those points
-    dder = ddxddy(tarc(i),d1,d2,d3,findif,infi) !array of second derivatives
-    rarc(i) = findr_fast(tarc(i),args) !array of radii away from the center of the tokamak (1,0)
+  do i = 1,n
+    der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran) !array of first derivatives at those points
+    dder = ddxddy(tarc(i),d1,d2,d3,findif,infi,tran) !array of second derivatives
+    rarc(i) = findr_fft(tarc(i),tran) !array of radii away from the center of the tokamak (1,0)
     xin(i) = 1.0d0 + rarc(i)*cos(tarc(i)) !x coordinates
     yin(i) = rarc(i)*sin(tarc(i))! y coordinates
     dx(i) = der(1) !put first derivatives in a size 2 array
     dy(i) = der(2)
     ddx(i) = dder(1) !same for second derivatives
     ddy(i) = dder(2)
-    enddo
+  enddo
 
-    call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for g_n
-    call gradyoupee(upx,upy,d1,d2,d3,ds,n,m,sol,infi,findif) !we have the gradient of u^p. 
+  call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for g_n
+  call gradyoupee(upx,upy,d1,d2,d3,ds,n,m,sol,infi,findif,tran) !we have the gradient of u^p. 
   call solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) ! solves for u^h
 
   do i =1,n
-    cxarr(i) = complex(uh(i),0.0d0)
+    cxarr(i) = cmplx(uh(i),0.0d0,kind=16)
   enddo
   
   open(1,file='st.txt') !for debugging
@@ -157,8 +156,8 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
     rnx(i) = (1.0d0)*dy(i)/norm !x-component of normal derivative vector
     rny(i) = (-1.0d0)*dx(i)/norm !y-component
     ut = (/dx(i)/norm,dy(i)/norm/) !tangent unit vector
-    mu(i) = cmplx(0.0d0,0.0d0) !the mu element in this integration is zero
-    sigma(i) = cmplx(upx(i)*ut(1)+upy(i)*ut(2))
+    mu(i) = cmplx(0.0D0,0.0D0,kind=16) !the mu element in this integration is zero
+    sigma(i) = cmplx(upx(i)*ut(1)+upy(i)*ut(2),kind=16)
     do j=1,n !this nested loop builds the left hand side matrix, which should be 1/2*eye(n) + ds*g + ds^2*ones(n,n)
   if(i==j) then
     lhs(i,j) = 0.5d0 + ds*gn(i,j) + ds**2
@@ -198,7 +197,7 @@ subroutine getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !xin,yin should come from the ar
     xp(i,1) = xin(i)
     xp(i,2) = yin(i)
     do j=1,n
-  gn(i,j)=0.0d0
+      gn(i,j)=0.0d0
     enddo
     enddo
     do i=1,n
@@ -207,9 +206,9 @@ subroutine getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !xin,yin should come from the ar
     x(2) = yin(i)
     gn(i,j) = ((-1.0d0)*dy(j)*gx(x,(/xp(j,1),xp(j,2)/)) &
   + dx(j)*gy(x,(/xp(j,1),xp(j,2)/)))/sqrt(dx(j)**2 + dy(j)**2)
-    enddo
+  enddo
      gn(i,i) =  (ddx(i)*dy(i) - ddy(i)*dx(i))/(4.0d0*pi*(dx(i)**2+dy(i)**2)**(3.0d0/2.0d0))
-    enddo
+  enddo
 end subroutine getgnmat
 
 
@@ -232,10 +231,11 @@ function gy(x,xp)
 end function gy
 
 
-subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x,infi,findif) !computes u^p on the boundary of the tokamak using qbx-fmm integration methods.
+subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x,infi,findif,tran) !computes u^p on the boundary of the tokamak using qbx-fmm integration methods.
     use mesh
     implicit none
     integer::n,m,i,nb
+    real *8, dimension(:,:)::tran
     real *8, dimension(:,:), allocatable::srcloc,targloc,targnorm
     real *8, dimension(:), allocatable::srcval,psol,x,y,tarc,r,upx,upy
     complex *16, dimension(:), allocatable::pot
@@ -244,18 +244,18 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x,infi,findif) !computes u^p on t
     real *8,dimension(2)::der
 
     pi = 4.0d0*atan(1.0d0)
-  call poissolve(d1,d2,d3,srcloc,x,srcval)
-  n = size(srcval)
+    call poissolve(d1,d2,d3,srcloc,x,srcval)
+    n = size(srcval)
     m = nb
-    call arcparam(0.0d0,2.0d0*pi,tarc,ds,m,l,d1,d2,d3,infi,findif)
+    call arcparam(0.0d0,2.0d0*pi,tarc,ds,m,l,d1,d2,d3,infi,findif,tran)
     allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
     args = (/d1,d2,d3,0.7d0,infi,1.0d0,0.0d0/)
     do i = 1,m
-    r(i) = findr_fast(tarc(i),args)
+    r(i) = findr_fft(tarc(i),tran)
     targloc(1,i) = 1.0d0 + r(i)*cos(tarc(i))
     targloc(2,i) = r(i)*sin(tarc(i))
-    der = dxdy(tarc(i),d1,d2,d3,findif,infi)
+    der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran)
     targnorm(1,i) = der(2)/sqrt(der(1)**2+der(2)**2)
     targnorm(2,i) = (-1.0d0)*der(1)/sqrt(der(1)**2+der(2)**2)
     enddo  
@@ -296,7 +296,7 @@ subroutine specder(xmin,xmax,n,input,deriv)  !takes spectral derivatives of orde
     end do
 
     do i=1,n
-    input2(i) =2.0d0*pi/(xmax-xmin)*k(i)*cmplx(0.0d0,1.0d0)*output(i)/n
+    input2(i) =2.0d0*pi/(xmax-xmin)*k(i)*cmplx(0.0D0,1.0D0,kind=16)*output(i)/n
     end do
 
     call dfftw_plan_dft_1d_(plan_backward,n, input2, output2,fftw_backward,fftw_estimate)
@@ -308,9 +308,10 @@ subroutine specder(xmin,xmax,n,input,deriv)  !takes spectral derivatives of orde
     end do
 end subroutine specder
 
-subroutine arcparam(a,b,tarc,darc,n,l,d1,d2,d3,infi,findif) !provides n evenly spaced points along a curve parametrised by r,theta between theta = a and theta = b
+subroutine arcparam(a,b,tarc,darc,n,l,d1,d2,d3,infi,findif,tran) !provides n evenly spaced points along a curve parametrised by r,theta between theta = a and theta = b
   implicit none
   integer::n,i,j
+  real *8, dimension(:,:)::tran
   real *8 a,b,darc,l,tinit,tfguess,tfupdate,currerr,ds,d1,d2,d3,infi,findif
   real *8,dimension(2)::der
   real *8,dimension(:),allocatable::t,w,tarc
@@ -318,7 +319,7 @@ subroutine arcparam(a,b,tarc,darc,n,l,d1,d2,d3,infi,findif) !provides n evenly s
 
   l = 0.0d0
   do i = 1,size(t)
-    der = dxdy(t(i),d1,d2,d3,findif,infi)
+    der = dxdy(t(i),d1,d2,d3,findif,infi,tran)
     l = l + sqrt(der(1)**2+der(2)**2)*w(i)
   end do
   write(*,*) l
@@ -340,11 +341,11 @@ subroutine arcparam(a,b,tarc,darc,n,l,d1,d2,d3,infi,findif) !provides n evenly s
   call lgmap(t,w,tinit,tfguess,0)
   ds = 0.0d0
   do j=1,size(t)
-    der = dxdy(t(j),d1,d2,d3,findif,infi)
+    der = dxdy(t(j),d1,d2,d3,findif,infi,tran)
     ds = ds + sqrt(der(1)**2+der(2)**2)*w(j)
   end do
   currerr = ds-darc
-  der = dxdy(tfguess,d1,d2,d3,findif,infi)
+  der = dxdy(tfguess,d1,d2,d3,findif,infi,tran)
   tfupdate = tfguess - currerr/sqrt(der(1)**2+der(2)**2)
     end do
     tarc(i) = tfguess
@@ -403,13 +404,14 @@ subroutine lgmap(x,w,a,b,mode) !does 16-point or 1000-point gauss-legendre quadr
   end do
 end subroutine lgmap
 
-function ddxddy(theta,d1,d2,d3,infi,rerror)
+function ddxddy(theta,d1,d2,d3,infi,rerror,tran)
   implicit none
   real *8::infi,rerror
-    real *8 ::theta,d1,d2,d3,tp,tm,dx,dy
-    real *8, dimension(2)::ddxddy,vec
-    real *8,dimension(7)::args
-    args = (/d1,d2,d3,0.7d0,rerror,1.0d0,0.0d0/)
+  real *8,dimension(:,:)::tran
+  real *8 ::theta,d1,d2,d3,tp,tm,dx,dy
+  real *8, dimension(2)::ddxddy,vec
+  real *8,dimension(7)::args
+  args = (/d1,d2,d3,0.7d0,rerror,1.0d0,0.0d0/)
 
   if(infi<1e-8)then
     infi=1e-8
@@ -419,119 +421,115 @@ function ddxddy(theta,d1,d2,d3,infi,rerror)
   !tm = theta - infi
   
   dx = 0.0d0
-  dx = (-1.0d0/12.0d0)*findr_fast(theta+2.0d0*infi,args)*cos(theta+2.0d0*infi) 
-  dx = dx + (-1.0d0/12.0d0)*findr_fast(theta-2.0d0*infi,args)*cos(theta-2.0d0*infi)
-  dx = dx + (4.0d0/3.0d0)*findr_fast(theta+infi,args)*cos(theta+infi)
-  dx = dx + (4.0d0/3.0d0)*findr_fast(theta-infi,args)*cos(theta-infi)
-  dx = dx + (-5.0d0/2.0d0)*findr_fast(theta,args)*cos(theta)
+  dx = (-1.0d0/12.0d0)*findr_fft(theta+2.0d0*infi,tran)*cos(theta+2.0d0*infi) 
+  dx = dx + (-1.0d0/12.0d0)*findr_fft(theta-2.0d0*infi,tran)*cos(theta-2.0d0*infi)
+  dx = dx + (4.0d0/3.0d0)*findr_fft(theta+infi,tran)*cos(theta+infi)
+  dx = dx + (4.0d0/3.0d0)*findr_fft(theta-infi,tran)*cos(theta-infi)
+  dx = dx + (-5.0d0/2.0d0)*findr_fft(theta,tran)*cos(theta)
   dx = dx/(infi*infi)
 
   dy = 0.0d0
-  dy = (-1.0d0/12.0d0)*findr_fast(theta+2.0d0*infi,args)*sin(theta+2.0d0*infi) 
-  dy = dy + (-1.0d0/12.0d0)*findr_fast(theta-2.0d0*infi,args)*sin(theta-2.0d0*infi)
-  dy = dy + (4.0d0/3.0d0)*findr_fast(theta+infi,args)*sin(theta+infi)
-  dy = dy + (4.0d0/3.0d0)*findr_fast(theta-infi,args)*sin(theta-infi)
-  dx = dx + (-5.0d0/2.0d0)*findr_fast(theta,args)*sin(theta)
+  dy = (-1.0d0/12.0d0)*findr_fft(theta+2.0d0*infi,tran)*sin(theta+2.0d0*infi) 
+  dy = dy + (-1.0d0/12.0d0)*findr_fft(theta-2.0d0*infi,tran)*sin(theta-2.0d0*infi)
+  dy = dy + (4.0d0/3.0d0)*findr_fft(theta+infi,tran)*sin(theta+infi)
+  dy = dy + (4.0d0/3.0d0)*findr_fft(theta-infi,tran)*sin(theta-infi)
+  dx = dx + (-5.0d0/2.0d0)*findr_fft(theta,tran)*sin(theta)
   dy = dy/(infi*infi)
   
-!  ddxddy(1) = (findr_fast(tp,args)*cos(tp)-2*findr_fast(theta,args)*cos(theta)+findr_fast(tm,args)*cos(tm))/(infi**2)
- !   ddxddy(2) = (findr_fast(tp,args)*sin(tp)+findr_fast(tm,args)*sin(tm)-2*findr_fast(theta,args)*sin(theta))/(infi**2)
+!  ddxddy(1) = (findr(tp,args)*cos(tp)-2*findr_fft(theta)*cos(theta)+findr(tm)*cos(tm))/(infi**2)
+ !   ddxddy(2) = (findr(tp,args)*sin(tp)+findr(tm)*sin(tm)-2*findr_fft(theta)*sin(theta))/(infi**2)
 
   ddxddy(1)=dx
   ddxddy(2)=dy
 
 end function ddxddy
 
-function dxdy(theta,d1,d2,d3,infi,rerror) !takes dx/dtheta and dy/dtheta @ theta on a tokamak defined by eps,del,kap
+function dxdy(theta,d1,d2,d3,infi,rerror,tran) !takes dx/dtheta and dy/dtheta @ theta on a tokamak defined by eps,del,kap
   implicit none
   real *8::infi,rerror
+  real *8, dimension(:,:)::tran
   real *8 ::theta,d1,d2,d3,dx,dy
   real *8, dimension(2)::dxdy
   real *8, dimension(7)::args
-  
-    args = (/d1,d2,d3,0.7d0,rerror,1.0d0,0.0d0/)
+  args = (/d1,d2,d3,0.7d0,rerror,1.0d0,0.0d0/)
   
   dx = 0.0d0
-  dx = (-1.0d0/280.0d0)*findr_fast(theta+4.0d0*infi,args)!*dcos(theta+4.0d0*infi) 
-  dx = dx + (1.0d0/280.0d0)*findr_fast(theta-4.0d0*infi,args)!*dcos(theta-4.0d0*infi)
-  dx = dx + (4.0d0/105.0d0)*findr_fast(theta+3.0d0*infi,args)!*dcos(theta+3.0d0*infi)
-  dx = dx + (-4.0d0/105.0d0)*findr_fast(theta-3.0d0*infi,args)!*dcos(theta-3.0d0*infi)
-  dx = (-1.0d0/5.0d0)*findr_fast(theta+2.0d0*infi,args)!*dcos(theta+2.0d0*infi) 
-  dx = dx + (1.0d0/5.0d0)*findr_fast(theta-2.0d0*infi,args)!*dcos(theta-2.0d0*infi)
-  dx = dx + (4.0d0/5.0d0)*findr_fast(theta+infi,args)!*dcos(theta+infi)
-  dx = dx + (-4.0d0/5.0d0)*findr_fast(theta-infi,args)!*dcos(theta-infi)
+  dx = (-1.0d0/280.0d0)*findr_fft(theta+4.0d0*infi,tran)!*dcos(theta+4.0d0*infi) 
+  dx = dx + (1.0d0/280.0d0)*findr_fft(theta-4.0d0*infi,tran)!*dcos(theta-4.0d0*infi)
+  dx = dx + (4.0d0/105.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dcos(theta+3.0d0*infi)
+  dx = dx + (-4.0d0/105.0d0)*findr_fft(theta-3.0d0*infi,tran)!*dcos(theta-3.0d0*infi)
+  dx = (-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dcos(theta+2.0d0*infi) 
+  dx = dx + (1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*dcos(theta-2.0d0*infi)
+  dx = dx + (4.0d0/5.0d0)*findr_fft(theta+infi,tran)!*dcos(theta+infi)
+  dx = dx + (-4.0d0/5.0d0)*findr_fft(theta-infi,tran)!*dcos(theta-infi)
   dx = dx/infi
 
-  dx = dx*cos(theta)-findr_fast(theta,args)*sin(theta)
+  dx = dx*cos(theta)-findr_fft(theta,tran)*sin(theta)
   
   dy = 0.0d0
-  dy = (-1.0d0/280.0d0)*findr_fast(theta+4.0d0*infi,args)!*dsin(theta+4.0d0*infi) 
-  dy = dy + (1.0d0/280.0d0)*findr_fast(theta-4.0d0*infi,args)!*dsin(theta-4.0d0*infi)
-  dy = dy + (4.0d0/105.0d0)*findr_fast(theta+3.0d0*infi,args)!*dsin(theta+3.0d0*infi)
-  dy = dy + (-4.0d0/105.0d0)*findr_fast(theta-3.0d0*infi,args)!*dsin(theta-3.0d0*infi)
-  dy = (-1.0d0/5.0d0)*findr_fast(theta+2.0d0*infi,args)!*dsin(theta+2.0d0*infi) 
-  dy = dy + (1.0d0/5.0d0)*findr_fast(theta-2.0d0*infi,args)!*dsin(theta-2.0d0*infi)
-  dy = dy + (4.0d0/5.0d0)*findr_fast(theta+infi,args)!*dsin(theta+infi)
-  dy = dy + (-4.0d0/5.0d0)*findr_fast(theta-infi,args)!*dsin(theta-infi)
+  dy = (-1.0d0/280.0d0)*findr_fft(theta+4.0d0*infi,tran)!*dsin(theta+4.0d0*infi) 
+  dy = dy + (1.0d0/280.0d0)*findr_fft(theta-4.0d0*infi,tran)!*dsin(theta-4.0d0*infi)
+  dy = dy + (4.0d0/105.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dsin(theta+3.0d0*infi)
+  dy = dy + (-4.0d0/105.0d0)*findr_fft(theta-3.0d0*infi,tran)!*dsin(theta-3.0d0*infi)
+  dy = (-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dsin(theta+2.0d0*infi) 
+  dy = dy + (1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*dsin(theta-2.0d0*infi)
+  dy = dy + (4.0d0/5.0d0)*findr_fft(theta+infi,tran)!*dsin(theta+infi)
+  dy = dy + (-4.0d0/5.0d0)*findr_fft(theta-infi,tran)!*dsin(theta-infi)
   dy = dy/infi
   
-  dy = dy*sin(theta)+findr_fast(theta,args)*cos(theta)
+  dy = dy*sin(theta)+findr_fft(theta,tran)*cos(theta)
 
-!  dxdy(1) = (findr_fast(theta+infi,args)*cos(theta+infi)-findr_fast(theta-infi,args)*cos(theta-infi))/(2*infi)
-!  dxdy(2) = (findr_fast(theta+infi,args)*sin(theta+infi)-findr_fast(theta-infi,args)*sin(theta-infi))/(2*infi)
+!  dxdy(1) = (findr_fft(theta+infi)*cos(theta+infi)-findr_fft(theta-infi)*cos(theta-infi))/(2*infi)
+!  dxdy(2) = (findr_fft(theta+infi)*sin(theta+infi)-findr_fft(theta-infi)*sin(theta-infi))/(2*infi)
   
   dxdy(1) = dx
   dxdy(2) = dy
 
 end function dxdy
 
-function findr_fft(theta)
+function findr_fft(theta,tran)
   implicit none
-  real *8::theta,r0
-  real *8, dimension(:),allocatable::rhat,k
+  real *8::theta,a
+  real *8, dimension(:,:)::tran
   real *8::findr_fft,ret
   integer::m,i
-  
+
+  m = size(tran(:,1))  
   ret = 0.0d0
-  open(1,file='files/fft.txt')
-    read(1,*) m
-    allocate(rhat(m),k(m))
-    do i=1,m
-      read(1,*) k(i),rhat(i)
-      ret = ret + (rhat(i))*dcos(k(i)*theta)
-    enddo
-  close(1)
+  do i=1,m
+    a = tran(i,1)*theta
+    ret = ret + (tran(i,2))*(1-a*a/2.0d0+)
+  enddo
 
   findr_fft = ret
 endfunction findr_fft
 
-subroutine fftgen(n,args)
+subroutine fftgen(n,args,tran)
   use,intrinsic::iso_c_binding
   use mesh
   implicit none
   include '/usr/include/fftw3.f03'
   type (c_ptr) :: plan
-  integer *4::n,i,j,m,mid
+  integer *4::i,j,m,mid,n
   integer *8::plan_forward,plan2
   integer *8,dimension(:),allocatable::kf,savedk
   real *8, dimension(:), allocatable:: tarc
   real *8, dimension(:),allocatable::savedr
-  complex(c_double_complex),dimension(n)::rhat,rarc,rhat2
-  complex(c_double_complex),dimension(:),allocatable::rf,rf2
+  real *8, dimension(:,:),allocatable::tran
+  complex *16,dimension(n)::rhat,rarc,rhat2,rarc2
   real *8::pi,r0
   real *8,dimension(7)::args
-  pi = 4*atan(1.0d0)
-
-  tarc = linspace(0.0d0,2.0d0*pi,n)
+  pi = 4.0d0*atan(1.0d0)
+  tarc = linspace(0.0d0,2.0d0*pi,int(n,kind=4))
   
   !call findr n times, store array of values r(theta)
   do i=1,n
-    rarc(i) = cmplx(1.0d0*findr_fast(tarc(i),args),0.0d0)
+    rarc(i) = findr(tarc(i),args)*cmplx(1.0D0,0.0D0,kind=16)
   enddo
-  !fourier transform r(theta) = sum(rhat*e^(ik*theta))
-  call dfftw_plan_dft_1d_(plan_forward,n,rarc,rhat,fftw_forward,fftw_estimate)
-  call dfftw_execute_(plan_forward)
-  call dfftw_destroy_plan_(plan_forward)
+  !fourier transform r(theta) = sum(rhat*e^(ik*theta))   
+  plan = fftw_plan_dft_1d(n,rarc,rhat,fftw_forward,fftw_estimate)
+  call fftw_execute_dft(plan,rarc,rhat)
+  call fftw_destroy_plan(plan)
   !change k array, put the second half before the first one
  
   mid = n/2+1
@@ -552,7 +550,7 @@ subroutine fftgen(n,args)
       m = m+1
     endif
   enddo
-  allocate(savedr(m),savedk(m))
+  allocate(savedr(m),savedk(m),tran(m,2))
 
   j=1
   do i=1,n
@@ -567,16 +565,19 @@ subroutine fftgen(n,args)
   open (1,file='files/fft.txt')
   write(1,*) m
   do i=1,m
+    tran(i,1) = savedk(i)
+    tran(i,2) = savedr(i)/n
     write(1,*) savedk(i),savedr(i)/n
   enddo
   close(1)
 endsubroutine fftgen
 
-function findr_fast(theta,args) !easier to call that findr itself, takes an array instead of a bunch of individual args
+function findr(theta,args)!d1,d2,d3,theta,guess,errtol,centx,centy) !newton's method on a tokamak defined by eps,del,kap
   implicit none
+  integer::i
   real *8,dimension(7)::args
-  real *8::d1,d2,d3,guess,theta,errtol,centx,centy,findif
-  real *8::findr_fast
+  real *8::d1,d2,d3,theta,findr,guess,currerr,errtol,centx,centy,rp,rm,dfr,one,pi
+  real *8,dimension(2)::uvec,x,center,xp,xm
   d1 = args(1)
   d2 = args(2)
   d3 = args(3)
@@ -584,23 +585,13 @@ function findr_fast(theta,args) !easier to call that findr itself, takes an arra
   errtol = args(5)
   centx = args(6)
   centy = args(7)
-
-  findr_fast = findr(d1,d2,d3,theta,guess,errtol,centx,centy)
-
-end function findr_fast
-
-function findr(d1,d2,d3,theta,guess,errtol,centx,centy) !newton's method on a tokamak defined by eps,del,kap
-  implicit none
-  integer::i
-  real *8::d1,d2,d3,theta,findr,guess,currerr,errtol,centx,centy,rp,rm,dfr,one,pi
-  real *8,dimension(2)::uvec,x,center,xp,xm
   one = 1.0d0
   center(1) = centx
   center(2) = centy
   findr = guess
   
-  uvec(1) = cos(theta)
-  uvec(2) = sin(theta)
+  uvec(1) = dcos(theta)
+  uvec(2) = dsin(theta)
   
   do i = 1,2
     x(i) = findr*uvec(i) + center(i)
