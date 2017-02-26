@@ -498,7 +498,7 @@ function findr_fft(theta,tran)
   ret = 0.0d0
   do i=1,m
     a = tran(i,1)*theta
-    ret = ret + (tran(i,2))*(1-a*a/2.0d0+)
+    ret = ret + (tran(i,2))*cos(a)
   enddo
 
   findr_fft = ret
@@ -521,7 +521,8 @@ subroutine fftgen(n,args,tran)
   real *8,dimension(7)::args
   pi = 4.0d0*atan(1.0d0)
   tarc = linspace(0.0d0,2.0d0*pi,int(n,kind=4))
-  
+ 
+
   !call findr n times, store array of values r(theta)
   do i=1,n
     rarc(i) = findr(tarc(i),args)*cmplx(1.0D0,0.0D0,kind=16)
@@ -562,8 +563,9 @@ subroutine fftgen(n,args,tran)
   enddo
   !store rhat in a file
 
-  open (1,file='files/fft.txt')
+  open(1,file='files/fft.txt')
   write(1,*) m
+  write(*,*) m
   do i=1,m
     tran(i,1) = savedk(i)
     tran(i,2) = savedr(i)/n
