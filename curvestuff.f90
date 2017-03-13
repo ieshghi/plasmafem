@@ -55,8 +55,8 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
 
   call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
   call switchpars(eps,del,kap,d1,d2,d3)
-  args = (/d1,d2,d3,0.7d0,infi,1.0d0,0.0d0/)!arguments for findr
-  call fftgen(5000,args,tran)!generate the fft file
+  args = (/d1,d2,d3,0.7d0,1.0d0*1e-14,1.0d0,0.0d0/)!arguments for findr
+  call fftgen(5000,args,tran)!generate the fft array
   bsize = size(b)
   n = 6*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
   pi = 4.0d0*atan(1.0d0)
@@ -82,11 +82,11 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
   enddo
 
   call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for g_n
-  call gradyoupee(upx,upy,d1,d2,d3,ds,n,m,sol,infi,findif,tran) !we have the gradient of u^p. 
+  call gradyoupee(upx,upy,d1,d2,d3,ds,tarc,n,sol,infi,findif,tran) !we have the gradient of u^p. 
   call solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) ! solves for u^h
-
+  
   do i =1,n
-    cxarr(i) = cmplx(uh(i),0.0d0,kind=16)
+    cxarr(i) = cmplx(uh(i),0.0D00,kind=16)
   enddo
   
   open(1,file='st.txt') !for debugging
@@ -111,7 +111,8 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
     fut(i) = fux(i)*that(1)+fuy(i)*that(2)
     fut(i) = (fun(i)-upn(i))/uhn(i)
 
-    write(1,*) upn(i),uhn(i)    
+
+    write(1,*) uh(i),uhn(i)
     !\debugging
     
   enddo
@@ -120,7 +121,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
   do i = 1,bsize !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
     temp = atan2(p(b(i),2),p(b(i),1)-1.0d0) !find the angle at which point i is along the boundary
     if(temp<0) then
-  temp = 2.0d0*pi+temp !if angle is negative, express in between 0 and 2pi instead
+        temp = 2.0d0*pi+temp !if angle is negative, express in between 0 and 2pi instead
     endif
     j = upper(temp,tarc) !in our array of angles, find the index which is right above our point
     k = lower(temp,tarc) !find the one right below
@@ -231,7 +232,7 @@ function gy(x,xp)
 end function gy
 
 
-subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x,infi,findif,tran) !computes u^p on the boundary of the tokamak using qbx-fmm integration methods.
+subroutine gradyoupee(upx,upy,d1,d2,d3,ds,tarc,m,x,infi,findif,tran) !computes u^p on the boundary of the tokamak using qbx-fmm integration methods.
     use mesh
     implicit none
     integer::n,m,i,nb
@@ -246,8 +247,6 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,ds,nb,m,x,infi,findif,tran) !computes u^p
     pi = 4.0d0*atan(1.0d0)
     call poissolve(d1,d2,d3,srcloc,x,srcval)
     n = size(srcval)
-    m = nb
-    call arcparam(0.0d0,2.0d0*pi,tarc,ds,m,l,d1,d2,d3,infi,findif,tran)
     allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
     args = (/d1,d2,d3,0.7d0,infi,1.0d0,0.0d0/)
@@ -296,7 +295,7 @@ subroutine specder(xmin,xmax,n,input,deriv)  !takes spectral derivatives of orde
     end do
 
     do i=1,n
-    input2(i) =2.0d0*pi/(xmax-xmin)*k(i)*cmplx(0.0D0,1.0D0,kind=16)*output(i)/n
+      input2(i) =2.0d0*pi/(xmax-xmin)*k(i)*cmplx(0.0D0,1.0D0,kind=16)*output(i)/n
     end do
 
     call dfftw_plan_dft_1d_(plan_backward,n, input2, output2,fftw_backward,fftw_estimate)
@@ -316,13 +315,11 @@ subroutine arcparam(a,b,tarc,darc,n,l,d1,d2,d3,infi,findif,tran) !provides n eve
   real *8,dimension(2)::der
   real *8,dimension(:),allocatable::t,w,tarc
   call lgmap(t,w,a,b,1)
-
   l = 0.0d0
   do i = 1,size(t)
     der = dxdy(t(i),d1,d2,d3,findif,infi,tran)
     l = l + sqrt(der(1)**2+der(2)**2)*w(i)
   end do
-  write(*,*) l
   darc = l/n
   allocate(tarc(n))
   do i = 1,n
@@ -335,18 +332,18 @@ subroutine arcparam(a,b,tarc,darc,n,l,d1,d2,d3,infi,findif,tran) !provides n eve
     tfguess = tinit+darc
     tfupdate = tfguess
     currerr=1.0d0
-    do while(abs(currerr) > findif) !infi
-  deallocate(t,w)
-  tfguess = tfupdate
-  call lgmap(t,w,tinit,tfguess,0)
-  ds = 0.0d0
-  do j=1,size(t)
-    der = dxdy(t(j),d1,d2,d3,findif,infi,tran)
-    ds = ds + sqrt(der(1)**2+der(2)**2)*w(j)
-  end do
-  currerr = ds-darc
-  der = dxdy(tfguess,d1,d2,d3,findif,infi,tran)
-  tfupdate = tfguess - currerr/sqrt(der(1)**2+der(2)**2)
+    do while(abs(currerr) > infi) !infi
+      deallocate(t,w)
+      tfguess = tfupdate
+      call lgmap(t,w,tinit,tfguess,0)
+      ds = 0.0d0
+      do j=1,size(t)
+        der = dxdy(t(j),d1,d2,d3,findif,infi,tran)
+        ds = ds + sqrt(der(1)**2+der(2)**2)*w(j)
+      end do
+      currerr = ds-darc
+      der = dxdy(tfguess,d1,d2,d3,findif,infi,tran)
+      tfupdate = tfguess - currerr/sqrt(der(1)**2+der(2)**2)
     end do
     tarc(i) = tfguess
   end do
@@ -408,7 +405,7 @@ function ddxddy(theta,d1,d2,d3,infi,rerror,tran)
   implicit none
   real *8::infi,rerror
   real *8,dimension(:,:)::tran
-  real *8 ::theta,d1,d2,d3,tp,tm,dx,dy
+  real *8 ::theta,d1,d2,d3,tp,tm,dx,dy,ddx
   real *8, dimension(2)::ddxddy,vec
   real *8,dimension(7)::args
   args = (/d1,d2,d3,0.7d0,rerror,1.0d0,0.0d0/)
@@ -416,32 +413,34 @@ function ddxddy(theta,d1,d2,d3,infi,rerror,tran)
   if(infi<1e-8)then
     infi=1e-8
   endif
-
-  !tp = theta + infi
-  !tm = theta - infi
   
   dx = 0.0d0
-  dx = (-1.0d0/12.0d0)*findr_fft(theta+2.0d0*infi,tran)*cos(theta+2.0d0*infi) 
-  dx = dx + (-1.0d0/12.0d0)*findr_fft(theta-2.0d0*infi,tran)*cos(theta-2.0d0*infi)
-  dx = dx + (4.0d0/3.0d0)*findr_fft(theta+infi,tran)*cos(theta+infi)
-  dx = dx + (4.0d0/3.0d0)*findr_fft(theta-infi,tran)*cos(theta-infi)
-  dx = dx + (-5.0d0/2.0d0)*findr_fft(theta,tran)*cos(theta)
-  dx = dx/(infi*infi)
+  dx = (-1.0d0/280.0d0)*findr_fft(theta+4.0d0*infi,tran)!*dcos(theta+4.0d0*infi) 
+  dx = dx + (1.0d0/280.0d0)*findr_fft(theta-4.0d0*infi,tran)!*dcos(theta-4.0d0*infi)
+  dx = dx + (4.0d0/105.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dcos(theta+3.0d0*infi)
+  dx = dx + (-4.0d0/105.0d0)*findr_fft(theta-3.0d0*infi,tran)!*dcos(theta-3.0d0*infi)
+  dx = dx +(-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dcos(theta+2.0d0*infi) 
+  dx = dx + (1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*dcos(theta-2.0d0*infi)
+  dx = dx + (4.0d0/5.0d0)*findr_fft(theta+infi,tran)!*dcos(theta+infi)
+  dx = dx + (-4.0d0/5.0d0)*findr_fft(theta-infi,tran)!*dcos(theta-infi)
+  dx = dx/infi
 
-  dy = 0.0d0
-  dy = (-1.0d0/12.0d0)*findr_fft(theta+2.0d0*infi,tran)*sin(theta+2.0d0*infi) 
-  dy = dy + (-1.0d0/12.0d0)*findr_fft(theta-2.0d0*infi,tran)*sin(theta-2.0d0*infi)
-  dy = dy + (4.0d0/3.0d0)*findr_fft(theta+infi,tran)*sin(theta+infi)
-  dy = dy + (4.0d0/3.0d0)*findr_fft(theta-infi,tran)*sin(theta-infi)
-  dx = dx + (-5.0d0/2.0d0)*findr_fft(theta,tran)*sin(theta)
-  dy = dy/(infi*infi)
+  ddx = 0.0d0
+  ddx = (1.0d0/560.0d0)*findr_fft(theta+4.0d0*infi,tran)!*dcos(theta+4.0d0*infi) 
+  ddx = ddx + (-1.0d0/560.0d0)*findr_fft(theta-4.0d0*infi,tran)!*dcos(theta-4.0d0*infi)
+  ddx = ddx + (-8.0d0/315.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dcos(theta+3.0d0*infi)
+  ddx = ddx + (8.0d0/315.0d0)*findr_fft(theta-3.0d0*infi,tran)!*dcos(theta-3.0d0*infi)
+  ddx = ddx + (1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dcos(theta+2.0d0*infi) 
+  ddx = ddx + (-1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*dcos(theta-2.0d0*infi)
+  ddx = ddx + (8.0d0/5.0d0)*findr_fft(theta+infi,tran)!*dcos(theta+infi)
+  ddx = ddx + (8.0d0/5.0d0)*findr_fft(theta-infi,tran)!*dcos(theta-infi)
+  ddx = ddx + (-205.0d0/72.0d0)*findr_fft(theta,tran)!*dcos(theta-infi)
+  ddx = ddx/infi
+
+  ddxddy(1) = ddx*cos(theta)-2*dx*sin(theta)-findr_fft(theta,tran)*cos(theta)
   
-!  ddxddy(1) = (findr(tp,args)*cos(tp)-2*findr_fft(theta)*cos(theta)+findr(tm)*cos(tm))/(infi**2)
- !   ddxddy(2) = (findr(tp,args)*sin(tp)+findr(tm)*sin(tm)-2*findr_fft(theta)*sin(theta))/(infi**2)
-
-  ddxddy(1)=dx
-  ddxddy(2)=dy
-
+  ddxddy(2) = ddx*sin(theta)+2*dx*cos(theta)-findr_fft(theta,tran)*sin(theta)
+  
 end function ddxddy
 
 function dxdy(theta,d1,d2,d3,infi,rerror,tran) !takes dx/dtheta and dy/dtheta @ theta on a tokamak defined by eps,del,kap
@@ -458,32 +457,15 @@ function dxdy(theta,d1,d2,d3,infi,rerror,tran) !takes dx/dtheta and dy/dtheta @ 
   dx = dx + (1.0d0/280.0d0)*findr_fft(theta-4.0d0*infi,tran)!*dcos(theta-4.0d0*infi)
   dx = dx + (4.0d0/105.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dcos(theta+3.0d0*infi)
   dx = dx + (-4.0d0/105.0d0)*findr_fft(theta-3.0d0*infi,tran)!*dcos(theta-3.0d0*infi)
-  dx = (-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dcos(theta+2.0d0*infi) 
+  dx = dx +(-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dcos(theta+2.0d0*infi) 
   dx = dx + (1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*dcos(theta-2.0d0*infi)
   dx = dx + (4.0d0/5.0d0)*findr_fft(theta+infi,tran)!*dcos(theta+infi)
   dx = dx + (-4.0d0/5.0d0)*findr_fft(theta-infi,tran)!*dcos(theta-infi)
   dx = dx/infi
 
-  dx = dx*cos(theta)-findr_fft(theta,tran)*sin(theta)
+  dxdy(1) = dx*cos(theta)-findr_fft(theta,tran)*sin(theta)
   
-  dy = 0.0d0
-  dy = (-1.0d0/280.0d0)*findr_fft(theta+4.0d0*infi,tran)!*dsin(theta+4.0d0*infi) 
-  dy = dy + (1.0d0/280.0d0)*findr_fft(theta-4.0d0*infi,tran)!*dsin(theta-4.0d0*infi)
-  dy = dy + (4.0d0/105.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dsin(theta+3.0d0*infi)
-  dy = dy + (-4.0d0/105.0d0)*findr_fft(theta-3.0d0*infi,tran)!*dsin(theta-3.0d0*infi)
-  dy = (-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dsin(theta+2.0d0*infi) 
-  dy = dy + (1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*dsin(theta-2.0d0*infi)
-  dy = dy + (4.0d0/5.0d0)*findr_fft(theta+infi,tran)!*dsin(theta+infi)
-  dy = dy + (-4.0d0/5.0d0)*findr_fft(theta-infi,tran)!*dsin(theta-infi)
-  dy = dy/infi
-  
-  dy = dy*sin(theta)+findr_fft(theta,tran)*cos(theta)
-
-!  dxdy(1) = (findr_fft(theta+infi)*cos(theta+infi)-findr_fft(theta-infi)*cos(theta-infi))/(2*infi)
-!  dxdy(2) = (findr_fft(theta+infi)*sin(theta+infi)-findr_fft(theta-infi)*sin(theta-infi))/(2*infi)
-  
-  dxdy(1) = dx
-  dxdy(2) = dy
+  dxdy(2) = dx*sin(theta)+findr_fft(theta,tran)*cos(theta)
 
 end function dxdy
 
@@ -520,8 +502,7 @@ subroutine fftgen(n,args,tran)
   real *8::pi,r0
   real *8,dimension(7)::args
   pi = 4.0d0*atan(1.0d0)
-  tarc = linspace(0.0d0,2.0d0*pi,int(n,kind=4))
- 
+  tarc = linspace2(0.0d0,2.0d0*pi,int(n,kind=4))
 
   !call findr n times, store array of values r(theta)
   do i=1,n
@@ -537,6 +518,7 @@ subroutine fftgen(n,args,tran)
   allocate(kf(n))
 
   do i=1,n
+!    rhat(i) = rhat(i)
     if(i<=mid+1)then
       kf (i) = i*1.0d0-1.0d0
     else
@@ -546,8 +528,9 @@ subroutine fftgen(n,args,tran)
 
   !keep larger modes
   m = 0
+  j=0
   do i=1,n
-    if(abs(rhat(i))>5e-12)then
+    if(abs(real(rhat(i)))>5e-12)then !what is this 5e-12? 
       m = m+1
     endif
   enddo
@@ -555,23 +538,16 @@ subroutine fftgen(n,args,tran)
 
   j=1
   do i=1,n
-    if(abs(rhat(i))>5e-12)then
+    if(abs(real(rhat(i)))>5e-12)then
       savedr(j) = real(rhat(i))
       savedk(j) = kf(i)
       j=j+1
     endif
   enddo
-  !store rhat in a file
-
-  open(1,file='files/fft.txt')
-  write(1,*) m
-  write(*,*) m
   do i=1,m
     tran(i,1) = savedk(i)
-    tran(i,2) = savedr(i)/n
-    write(1,*) savedk(i),savedr(i)/n
+    tran(i,2) = savedr(i)/n !put 1/n here or before filter?
   enddo
-  close(1)
 endsubroutine fftgen
 
 function findr(theta,args)!d1,d2,d3,theta,guess,errtol,centx,centy) !newton's method on a tokamak defined by eps,del,kap

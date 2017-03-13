@@ -320,8 +320,21 @@ MODULE mesh
         do i = 1,n
                 linspace(i)=a+(i-1)*dx ! fill the output array
         end do
-		END FUNCTION linspace
-	
+	END FUNCTION linspace
+
+	FUNCTION  linspace2(a,b,n) !equivalent of python linspace
+        implicit none
+        real *8, intent(in):: a,b !start and endpoint
+        integer, intent(in):: n !number of elements
+        integer:: i ! loop variable
+        real *8:: dx, linspace2(n)
+        dx = (b-a)/(n) !spacing between x's
+        do i = 1,n
+                linspace2(i)=a+(i-1)*dx ! fill the output array
+        end do
+	endfunction linspace2
+
+
 	FUNCTION threedet(m) !Find the determinant of a 3x3 matrix
 		implicit none
 		real *8, dimension(3,3):: m
