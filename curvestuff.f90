@@ -58,7 +58,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
   args = (/d1,d2,d3,0.7d0,1.0d0*1e-14,1.0d0,0.0d0/)!arguments for findr
   call fftgen(5000,args,tran)!generate the fft array
   bsize = size(b)
-  n = 6*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
+  n = 3*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
   pi = 4.0d0*atan(1.0d0)
 
   allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n),gn(n,n))
@@ -91,7 +91,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
   
   open(1,file='st.txt') !for debugging
 
-  call specder(0.0d0,2.0d0*pi,n,cxarr,uhn) !spectral derivative of u^h gives us u^h_t, which is equal to u^h_n
+  call specder(0.0d0,l,n,cxarr,uhn) !spectral derivative of u^h gives us u^h_t, which is equal to u^h_n
 
   do i = 1,n
     nhat = (/(-1.0d0)*dy(i)/sqrt(dx(i)**2+dy(i)**2),dx(i)/sqrt(dx(i)**2+dy(i)**2)/)
@@ -109,10 +109,8 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
     fuy(i) = exacty(xin(i),yin(i),d1,d2,d3)
     fun(i) = fux(i)*nhat(1)+fuy(i)*nhat(2)
     fut(i) = fux(i)*that(1)+fuy(i)*that(2)
-    fut(i) = (fun(i)-upn(i))/uhn(i)
-
-
-    write(1,*) uh(i),uhn(i)
+    
+    write(1,*) upx(i),upy(i),upn(i),un(i),fun(i) 
     !\debugging
     
   enddo
@@ -128,7 +126,6 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
 
     ubx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j)) !interpolate x derivative boundary
     uby(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
-
   enddo
   
   write(*,*) ('taking derivatives...')
@@ -160,15 +157,15 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
     mu(i) = cmplx(0.0D0,0.0D0,kind=16) !the mu element in this integration is zero
     sigma(i) = cmplx(upx(i)*ut(1)+upy(i)*ut(2),kind=16)
     do j=1,n !this nested loop builds the left hand side matrix, which should be 1/2*eye(n) + ds*g + ds^2*ones(n,n)
-  if(i==j) then
-    lhs(i,j) = 0.5d0 + ds*gn(i,j) + ds**2
-  else
-    lhs(i,j) = ds*gn(i,j) + ds**2
-  endif
+      if(i==j) then
+        lhs(i,j) = 0.5d0 + ds*gn(i,j) + ds**2
+      else
+        lhs(i,j) = ds*gn(i,j) + ds**2
+      endif
     enddo
   enddo
 
-  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,4,1,4,-1,pot,potn,grad) !call integration routine
+  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,4,1,2,-1,pot,potn,grad) !call integration routine
 
   do i = 1,n
     rhs(i) = (-1.0d0)*real(pot(i))
@@ -180,13 +177,12 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
   do i = 1,n
     uh(i) = rhs(i)
   enddo
-
 endsubroutine solveyouh
 
 
 subroutine getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !xin,yin should come from the arcparam subroutine, n is their length
     implicit none
-    integer::n,i,j
+    integer::n,i,j,k
     real *8, dimension(n,2)::xp
     real *8, dimension(n)::xin,yin,dx,dy,ddx,ddy
     real *8, dimension(n,n)::gn
@@ -195,21 +191,22 @@ subroutine getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !xin,yin should come from the ar
     pi = 4.0d0*atan(1.0d0)
 
     do i=1,n
-    xp(i,1) = xin(i)
-    xp(i,2) = yin(i)
-    do j=1,n
-      gn(i,j)=0.0d0
-    enddo
+      xp(i,1) = xin(i)
+      xp(i,2) = yin(i)
+      do j=1,n
+        gn(i,j)=0.0d0
+      enddo
     enddo
     do i=1,n
-    do j=1,n
-    x(1) = xin(i)
-    x(2) = yin(i)
-    gn(i,j) = ((-1.0d0)*dy(j)*gx(x,(/xp(j,1),xp(j,2)/)) &
-  + dx(j)*gy(x,(/xp(j,1),xp(j,2)/)))/sqrt(dx(j)**2 + dy(j)**2)
-  enddo
-     gn(i,i) =  (ddx(i)*dy(i) - ddy(i)*dx(i))/(4.0d0*pi*(dx(i)**2+dy(i)**2)**(3.0d0/2.0d0))
-  enddo
+      do j=1,n
+        x(1) = xin(i)
+        x(2) = yin(i)
+        gn(i,j) = ((-1.0d0)*dy(j)*gx(x,(/xp(j,1),xp(j,2)/)) &
+        + dx(j)*gy(x,(/xp(j,1),xp(j,2)/)))/sqrt(dx(j)**2 + dy(j)**2)
+      enddo
+      gn(i,i) = (ddx(i)*dy(i) - ddy(i)*dx(i))/(4.0d0*pi*(dx(i)**2+dy(i)**2)**(3.0d0/2.0d0))
+    enddo
+    
 end subroutine getgnmat
 
 
@@ -245,21 +242,21 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,ds,tarc,m,x,infi,findif,tran) !computes u
     real *8,dimension(2)::der
 
     pi = 4.0d0*atan(1.0d0)
-    call poissolve(d1,d2,d3,srcloc,x,srcval)
+    call poissolve(d1,d2,d3,srcloc,x,srcval,3)
     n = size(srcval)
     allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
     args = (/d1,d2,d3,0.7d0,infi,1.0d0,0.0d0/)
     do i = 1,m
-    r(i) = findr_fft(tarc(i),tran)
-    targloc(1,i) = 1.0d0 + r(i)*cos(tarc(i))
-    targloc(2,i) = r(i)*sin(tarc(i))
-    der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran)
-    targnorm(1,i) = der(2)/sqrt(der(1)**2+der(2)**2)
-    targnorm(2,i) = (-1.0d0)*der(1)/sqrt(der(1)**2+der(2)**2)
+      r(i) = findr_fft(tarc(i),tran)
+      targloc(1,i) = 1.0d0 + r(i)*cos(tarc(i))
+      targloc(2,i) = r(i)*sin(tarc(i))
+      der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran)
+      targnorm(1,i) = der(2)/sqrt(der(1)**2+der(2)**2)
+      targnorm(2,i) = (-1.0d0)*der(1)/sqrt(der(1)**2+der(2)**2)
     enddo  
 
-    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,6,-1,pot)
+    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,2,-1,pot)
 
   do i = 1,m
     upx(i) = (-1.0d0)*real(pot(i)) !this might have to be revised, depending on the convention for the normal direction (in/out)
@@ -303,7 +300,7 @@ subroutine specder(xmin,xmax,n,input,deriv)  !takes spectral derivatives of orde
     call dfftw_destroy_plan_(plan_backward)
 
     do i = 1,n
-	  deriv(i) = real(output2(i))
+      deriv(i) = real(output2(i))
     end do
 end subroutine specder
 
@@ -367,8 +364,6 @@ subroutine lgmap(x,w,a,b,mode) !does 16-point or 1000-point gauss-legendre quadr
   else
     write(*,*) 'mode must be 0 or 1'
   end if
-
-
   nr = 0
   open(unit=1,file='legendre/'//filename//'_w.txt')
     do j=1,maxrecs
@@ -426,16 +421,16 @@ function ddxddy(theta,d1,d2,d3,infi,rerror,tran)
   dx = dx/infi
 
   ddx = 0.0d0
-  ddx = (1.0d0/560.0d0)*findr_fft(theta+4.0d0*infi,tran)!*dcos(theta+4.0d0*infi) 
+  ddx = (-1.0d0/560.0d0)*findr_fft(theta+4.0d0*infi,tran)!*dcos(theta+4.0d0*infi) 
   ddx = ddx + (-1.0d0/560.0d0)*findr_fft(theta-4.0d0*infi,tran)!*dcos(theta-4.0d0*infi)
-  ddx = ddx + (-8.0d0/315.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dcos(theta+3.0d0*infi)
+  ddx = ddx + (8.0d0/315.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dcos(theta+3.0d0*infi)
   ddx = ddx + (8.0d0/315.0d0)*findr_fft(theta-3.0d0*infi,tran)!*dcos(theta-3.0d0*infi)
-  ddx = ddx + (1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dcos(theta+2.0d0*infi) 
+  ddx = ddx + (-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dcos(theta+2.0d0*infi) 
   ddx = ddx + (-1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*dcos(theta-2.0d0*infi)
   ddx = ddx + (8.0d0/5.0d0)*findr_fft(theta+infi,tran)!*dcos(theta+infi)
   ddx = ddx + (8.0d0/5.0d0)*findr_fft(theta-infi,tran)!*dcos(theta-infi)
   ddx = ddx + (-205.0d0/72.0d0)*findr_fft(theta,tran)!*dcos(theta-infi)
-  ddx = ddx/infi
+  ddx = ddx/(infi*infi)
 
   ddxddy(1) = ddx*cos(theta)-2*dx*sin(theta)-findr_fft(theta,tran)*cos(theta)
   
@@ -535,7 +530,6 @@ subroutine fftgen(n,args,tran)
     endif
   enddo
   allocate(savedr(m),savedk(m),tran(m,2))
-
   j=1
   do i=1,n
     if(abs(real(rhat(i)))>5e-12)then

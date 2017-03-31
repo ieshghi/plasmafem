@@ -6,6 +6,9 @@ function [] = fuck(size)
     [p,t]=distmesh2d(fd,@huniform,size,[0,-1;2,1],pfix);
     bedge = boundedges(p,t);
     b = unique(bedge);
+
+    length(b)
+
     save ../infiles/b.txt b -ASCII;
     save ../infiles/p.txt p -ASCII;
     save ../infiles/t.txt t -ASCII;
