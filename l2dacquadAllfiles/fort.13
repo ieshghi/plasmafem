@@ -1,0 +1,20 @@
+  uexact is 
+  0.25615E+00  0.00000E+00
+  ssumin is 
+  -.11170E-01
+  dsumin is 
+  -.26732E+00
+  ssumout is 
+  -.26732E+00
+  dsumout is 
+  -.11170E-01
+  interior S-D is 
+  0.25615E+00
+  exterior -(S-D) is 
+  0.25615E+00
+ epsfmm=
+  0.50000E-12
+ nbox=
+      40
+  increasing allocation, ntot is 
+ *******
