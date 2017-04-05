@@ -193,9 +193,9 @@ MODULE mesh
     call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
   endsubroutine firstder
 
-  SUBROUTINE poissolve(d1,d2,d3,src_loc,x,src_val,over) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
+  SUBROUTINE poissolve(d1,d2,d3,src_loc,x,src_val) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
   implicit none
-  integer *8::N,NT,NV,NB,i,j,k,q,nedge,over !nx=elements in x, ny=elements in y, N=total number of elements
+  integer *8::N,NT,NV,NB,i,j,k,q,nedge !nx=elements in x, ny=elements in y, N=total number of elements
   integer, dimension(3)::tri
   integer, dimension(:,:),allocatable::t
   integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
@@ -242,7 +242,7 @@ MODULE mesh
     endif
   enddo
 
-  allocate(src_val(NT+(over-1)*nedge),src_loc(2,NT+(over-1)*nedge))
+  allocate(src_val(NT+(2)*nedge),src_loc(2,NT+(2)*nedge))
 
   q = 1
   k = 1
@@ -353,47 +353,6 @@ MODULE mesh
   call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
   END SUBROUTINE poissolve
  
-  subroutine oversamp(edgetri,p,t,src_loc,src_val,over)
-    implicit none
-    integer::i,over    
-    logical, dimension(:)::edgetri
-    real *8, dimension(:,:)::p,src_loc
-    integer, dimension(:,:)::t
-    real *8, dimension(:)::src_val
-    real *8, dimension(:,2),allocatable::pts
-    real *8, dimension(2)::centroid
-
-    if(edgetri(i))then
-      centroid(1) = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0)
-      centroid(2) = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
-      pt1(1) = (p(t(i,1),1)+p(t(i,2),1)+centroid(1))/3
-      pt1(2) = (p(t(i,1),2)+p(t(i,2),2)+centroid(2))/3
-      pt2(1) = (p(t(i,2),1)+p(t(i,3),1)+centroid(1))/3
-      pt2(2) = (p(t(i,2),2)+p(t(i,3),2)+centroid(2))/3
-      pt3(1) = (p(t(i,1),1)+p(t(i,3),1)+centroid(1))/3
-      pt3(2) = (p(t(i,1),2)+p(t(i,3),2)+centroid(2))/3
-      
-      src_loc(1,k) = pt1(1)
-      src_loc(2,k) = pt1(2)
-      src_val(k) = foo(pt1(1),pt1(2),d1,d2,d3)*det*0.5/3
-      src_loc(1,k+1) = pt2(1)
-      src_loc(2,k+1) = pt2(2)
-      src_val(k+1) = foo(pt2(1),pt2(2),d1,d2,d3)*det*0.5/3
-      src_loc(1,k+2) = pt3(1)
-      src_loc(2,k+2) = pt3(2)
-      src_val(k+2) = foo(pt3(1),pt3(2),d1,d2,d3)*det*0.5/3
-      k = k+3    
-    else
-      src_loc(1,k) = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0)
-      src_loc(2,k) = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
-      src_val(k) = temp*det*0.5
-      k = k+1
-
-
-  endsubroutine
-
-
-
   FUNCTION  linspace(a,b,n) !equivalent of python linspace
     implicit none
     real *8, intent(in):: a,b !start and endpoint

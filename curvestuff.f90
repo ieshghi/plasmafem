@@ -165,7 +165,7 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
     enddo
   enddo
 
-  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,4,1,2,-1,pot,potn,grad) !call integration routine
+  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,4,1,4,-1,pot,potn,grad) !call integration routine
 
   do i = 1,n
     rhs(i) = (-1.0d0)*real(pot(i))
@@ -242,7 +242,7 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,ds,tarc,m,x,infi,findif,tran) !computes u
     real *8,dimension(2)::der
 
     pi = 4.0d0*atan(1.0d0)
-    call poissolve(d1,d2,d3,srcloc,x,srcval,3)
+    call poissolve(d1,d2,d3,srcloc,x,srcval)
     n = size(srcval)
     allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
@@ -256,7 +256,7 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,ds,tarc,m,x,infi,findif,tran) !computes u
       targnorm(2,i) = (-1.0d0)*der(1)/sqrt(der(1)**2+der(2)**2)
     enddo  
 
-    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,2,-1,pot)
+    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,4,-1,pot)
 
   do i = 1,m
     upx(i) = (-1.0d0)*real(pot(i)) !this might have to be revised, depending on the convention for the normal direction (in/out)
