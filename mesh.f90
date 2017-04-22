@@ -23,8 +23,6 @@ MODULE mesh
   real,parameter::pi=3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986
   real *8,intent(in):: x,y,d1,d2,d3
   real *8:: foo
-  
-
         !foo = 3.0/2.0*x**2+2*d2+d3*(12*x**2-4*2*y**2-4*2*x**2)
         foo = (24*d1+(x**2)*(24*d2+(x**2)*(24*d3+35)-96*d3*y**2))/(32*x**(5.0d0/2.0d0))
 !  foo = -4.0 
@@ -193,14 +191,14 @@ MODULE mesh
     call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
   endsubroutine firstder
 
-  SUBROUTINE poissolve(d1,d2,d3,src_loc,x,src_val) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
+  SUBROUTINE poissolve(d1,d2,d3,src_loc,x,src_val,areas) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
   implicit none
   integer *8::N,NT,NV,NB,i,j,k,q,nedge !nx=elements in x, ny=elements in y, N=total number of elements
   integer, dimension(3)::tri
   integer, dimension(:,:),allocatable::t
   integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
   real *8, dimension(:,:),allocatable::p,src_loc !array of points, array of triangle vertices, and big L finite element array
-  real *8, dimension(:),allocatable::fu,val1,val2,arr,src_val,x !array of vertices along edge, array of <integral>g_i*f
+  real *8, dimension(:),allocatable::fu,val1,val2,arr,src_val,x,areas !array of vertices along edge, array of <integral>g_i*f
   real *8, dimension(3,3)::A !We will use this array in the process of finding equations of planes
   real *8::d1,d2,d3,eps,del,kap,det,temp !determinants of matrices, values to insert in sparse matrix
   real *8, dimension(2)::centroid, pt1,pt2,pt3
@@ -242,7 +240,7 @@ MODULE mesh
     endif
   enddo
 
-  allocate(src_val(NT+(2)*nedge),src_loc(2,NT+(2)*nedge))
+  allocate(src_val(NT+(2)*nedge),src_loc(2,NT+(2)*nedge),areas(NT+2*nedge))
 
   q = 1
   k = 1
@@ -278,17 +276,21 @@ MODULE mesh
       src_loc(1,k) = pt1(1)
       src_loc(2,k) = pt1(2)
       src_val(k) = foo(pt1(1),pt1(2),d1,d2,d3)*det*0.5/3
+      areas(k) = det*0.5/3
       src_loc(1,k+1) = pt2(1)
       src_loc(2,k+1) = pt2(2)
       src_val(k+1) = foo(pt2(1),pt2(2),d1,d2,d3)*det*0.5/3
+      areas(k+1) = det*0.5/3
       src_loc(1,k+2) = pt3(1)
       src_loc(2,k+2) = pt3(2)
       src_val(k+2) = foo(pt3(1),pt3(2),d1,d2,d3)*det*0.5/3
+      areas(k+2) = det*0.5/3
       k = k+3    
     else
       src_loc(1,k) = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0)
       src_loc(2,k) = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
       src_val(k) = temp*det*0.5
+      areas(k) = det*0.5
       k = k+1
     endif
   end do

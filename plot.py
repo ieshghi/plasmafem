@@ -120,7 +120,7 @@ def conver(slope=-2,der=0):
 #  ax.loglog(c,c**(slope),label=='Expected')
   
   ax.plot(np.log10(c),np.log10(conv),label='Result')
-  ax.plot(np.log10(c),slope*np.log10(c)-3.5,label='Expected')
+  ax.plot(np.log10(c),slope*np.log10(c)-2.5,label='Expected')
   ax.set_title('Linear elements $u$ convergence')
       
   ax.set_xlabel('log10(N)')
