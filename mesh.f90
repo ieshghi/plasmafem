@@ -38,12 +38,27 @@ MODULE mesh
         fx = 3*((x**2)*((-8)*d2+(x**2)*(24*d3+35)+32*d3*y**2)-40*d1)/(64*x**(7.0d0/2.0d0))
   endfunction fx
 
+  function fxx(x,y,d1,d2,d3) !x derivative of rhs
+  implicit none
+  real *8::x,y,d1,d2,d3,fxx
+
+  !fx =3*x+d3*(24*x-4*4*x)
+  fxx = 3*(280*d1 + (x**2)*(24*d2+(x**2)*(24**d3+35)-96*d3*(y**2)))/(128*x**(9.0d0/2.0d0))
+  endfunction fxx
+*
+  function fxy(x,y,d1,d2,d3) !x derivative of rhs
+  implicit none
+  real *8::x,y,d1,d2,d3,fxy
+
+  fxy = 3*y*d3/(x**(3.0d0/2.0d0))
+  endfunction fxy
+*
   function fy(x,y,d1,d2,d3) !y derivative of rhs
   implicit none
   real *8::x,y,d1,d2,d3,fy
 
-!  fy =(-1)*d3*4*4*y
-        fy = (-6)*d3*y/sqrt(x)
+  !fy =(-1)*d3*4*4*y
+  fy = (-6)*d3*y/sqrt(x)
   endfunction fy
 
   function exactx(x,y,d1,d2,d3) !x derivative of solution 

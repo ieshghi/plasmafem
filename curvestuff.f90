@@ -34,18 +34,12 @@ function lower(theta,tarc) !this function needs to be checked! not sure if it's 
   endif
 end function lower
 
-subroutine dderpois(d1,d2,d3,infi,findif,solxx,solxy,sol,p,t
-
-
-
-subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,areas) !solves poisson equation with first derivatives to second order error.
+subroutine dderpois(d1,d2,d3,infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   use mesh
   implicit none
   real *8,dimension(:,:),allocatable::gn,p,tran
-  real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly,areas
-  !for debugging
-  real *8,dimension(:),allocatable::fux,fuy,fun,fut
-  !\for debugging
+  real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly,areas&
+          ,solxx,solyy,solxy
   real *8::d1,d2,d3,pi,ds,eps,del,kap,l,infi,findif
   real *8,dimension(2)::that,nhat,der,dder
   real *8,dimension(2,2)::flipmat
@@ -63,11 +57,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,areas) !solves poisson
   bsize = size(b)
   n = 3*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
   pi = 4.0d0*atan(1.0d0)
-
   allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n),gn(n,n))
-  !debugging
-  allocate(fux(n),fuy(n),fun(n),fut(n))
-  !\debugging
   allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ux(n),uy(n),ubx(bsize),uby(bsize))
   call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
 ! of angles which give equidistant points along the boundary
@@ -92,8 +82,85 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,areas) !solves poisson
     cxarr(i) = cmplx(uh(i),0.0D00,kind=16)
   enddo
   
-  open(1,file='st.txt') !for debugging
+  call specder(0.0d0,l,n,cxarr,uhn) !spectral derivative of u^h gives us u^h_t, which is equal to u^h_n
 
+  do i = 1,n
+    nhat = (/(-1.0d0)*dy(i)/sqrt(dx(i)**2+dy(i)**2),dx(i)/sqrt(dx(i)**2+dy(i)**2)/)
+    that = (/dx(i)/sqrt(dx(i)**2+dy(i)**2),dy(i)/sqrt(dx(i)**2+dy(i)**2)/)
+    upn(i) = upx(i)*nhat(1)+upy(i)*nhat(2)!dotting the gradient with nhat gives normal derivative
+    un(i) = uhn(i) + upn(i)
+    det = nhat(1)*that(2)-nhat(2)*that(1) !same for tangential derivative
+    ux(i) = 1.0d0/det*(un(i)*that(2)-0*nhat(2)) !the zero comes from the fact that we know u_t to be 0
+    uy(i) = 1.0d0/det*(0*nhat(1)-un(i)*that(1))
+  enddo
+  
+  do i = 1,bsize !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
+    temp = atan2(p(b(i),2),p(b(i),1)-1.0d0) !find the angle at which point i is along the boundary
+    if(temp<0) then
+        temp = 2.0d0*pi+temp !if angle is negative, express in between 0 and 2pi instead
+    endif
+    j = upper(temp,tarc) !in our array of angles, find the index which is right above our point
+    k = lower(temp,tarc) !find the one right below
+
+    ubx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j)) !interpolate x derivative boundary
+    uby(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
+  enddo
+  
+  write(*,*) ('taking derivatives...')
+  call firstder(d1,d2,d3,solx,p,t,b,ubx,0)
+  call firstder(d1,d2,d3,soly,p,t,b,uby,1)
+endsubroutine dderpois
+
+
+
+subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,areas) !solves poisson equation with first derivatives to second order error.
+  use mesh
+  implicit none
+  real *8,dimension(:,:),allocatable::gn,p,tran
+  real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly,areas
+  real *8::d1,d2,d3,pi,ds,eps,del,kap,l,infi,findif
+  real *8,dimension(2)::that,nhat,der,dder
+  real *8,dimension(2,2)::flipmat
+  real *8,dimension(7)::args
+  real *8::det,temp
+  integer,dimension(:),allocatable::b
+  integer,dimension(:,:),allocatable::t
+  integer::i,j,k,n,m,bsize
+  complex *16,dimension(:),allocatable::cxarr
+
+  call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
+  call switchpars(eps,del,kap,d1,d2,d3)
+  args = (/d1,d2,d3,0.7d0,1.0d0*1e-14,1.0d0,0.0d0/)!arguments for findr
+  call fftgen(5000,args,tran)!generate the fft array
+  bsize = size(b)
+  n = 3*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
+  pi = 4.0d0*atan(1.0d0)
+
+  allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n),gn(n,n))
+  allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ux(n),uy(n),ubx(bsize),uby(bsize))
+  call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
+! of angles which give equidistant points along the boundary
+
+  do i = 1,n
+    der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran) !array of first derivatives at those points
+    dder = ddxddy(tarc(i),d1,d2,d3,findif,infi,tran) !array of second derivatives
+    rarc(i) = findr_fft(tarc(i),tran) !array of radii away from the center of the tokamak (1,0)
+    xin(i) = 1.0d0 + rarc(i)*cos(tarc(i)) !x coordinates
+    yin(i) = rarc(i)*sin(tarc(i))! y coordinates
+    dx(i) = der(1) !put first derivatives in a size 2 array
+    dy(i) = der(2)
+    ddx(i) = dder(1) !same for second derivatives
+    ddy(i) = dder(2)
+  enddo
+
+  call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for g_n
+  call gradyoupee(upx,upy,d1,d2,d3,ds,tarc,n,sol,infi,findif,tran,areas) !we have the gradient of u^p. 
+  call solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) ! solves for u^h
+  
+  do i =1,n
+    cxarr(i) = cmplx(uh(i),0.0D00,kind=16)
+  enddo
+  
   call specder(0.0d0,l,n,cxarr,uhn) !spectral derivative of u^h gives us u^h_t, which is equal to u^h_n
 
   do i = 1,n
@@ -122,8 +189,6 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,areas) !solves poisson
   call firstder(d1,d2,d3,solx,p,t,b,ubx,0)
   call firstder(d1,d2,d3,soly,p,t,b,uby,1)
   
-  close(1)
-
 end subroutine derpois
 
 
