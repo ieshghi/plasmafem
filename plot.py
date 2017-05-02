@@ -113,6 +113,12 @@ def conver(slope=-2,der=0):
       conv = np.loadtxt('files/convx.dat')
   elif der=='y':
       conv = np.loadtxt('files/convy.dat')
+  elif der=='xx':
+      conv = np.loadtxt('files/convxx.dat')
+  elif der=='xy':
+      conv = np.loadtxt('files/convxy.dat')
+  elif der=='yy':
+      conv = np.loadtxt('files/convyy.dat')
   c = conv[:,1]
   conv = conv[:,0]
   ax = fig.add_subplot(111)
@@ -120,7 +126,7 @@ def conver(slope=-2,der=0):
 #  ax.loglog(c,c**(slope),label=='Expected')
   
   ax.plot(np.log10(c),np.log10(conv),label='Result')
-  ax.plot(np.log10(c),slope*np.log10(c)-2.5,label='Expected')
+  ax.plot(np.log10(c),slope*np.log10(c),label='Expected')
   ax.set_title('Linear elements $u$ convergence')
       
   ax.set_xlabel('log10(N)')

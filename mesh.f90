@@ -45,14 +45,14 @@ MODULE mesh
   !fx =3*x+d3*(24*x-4*4*x)
   fxx = 3*(280*d1 + (x**2)*(24*d2+(x**2)*(24**d3+35)-96*d3*(y**2)))/(128*x**(9.0d0/2.0d0))
   endfunction fxx
-*
+
   function fxy(x,y,d1,d2,d3) !x derivative of rhs
   implicit none
   real *8::x,y,d1,d2,d3,fxy
 
   fxy = 3*y*d3/(x**(3.0d0/2.0d0))
   endfunction fxy
-*
+
   function fy(x,y,d1,d2,d3) !y derivative of rhs
   implicit none
   real *8::x,y,d1,d2,d3,fy
@@ -66,8 +66,8 @@ MODULE mesh
   real *8::x,y,d1,d2,d3,exactx
   
 !  exactx = 1.0/2.0*x**3+d2*2*x+d3*(4*x**3-8*x*y**2)
-        exactx = ((x**2)*(24*d2+7*(8*d3+1)*(x**2)-96*d3*y**2)-8*d1)/(16*x**(3.0d0/2.0d0))
-    endfunction exactx
+  exactx = ((x**2)*(24*d2+7*(8*d3+1)*(x**2)-96*d3*y**2)-8*d1)/(16*x**(3.0d0/2.0d0))
+  endfunction exactx
 
   function exacty(x,y,d1,d2,d3) !y derivative of solution
   implicit none
@@ -77,17 +77,41 @@ MODULE mesh
   exacty =  (-8)*d3*y*x**(3.0d0/2.0d0)
   endfunction exacty
 
+  function exactxx(x,y,d1,d2,d3) !x derivative of solution 
+  implicit none
+  real *8::x,y,d1,d2,d3,exactxx
+  
+!  exactx = 1.0/2.0*x**3+d2*2*x+d3*(4*x**3-8*x*y**2)
+  exactxx = (24*d1+(x**2)*(24*d2+(x**2)*35*(8*d3+1)-96*d3*(y**2)))/(32*(x**(5.0d0/2.0d0)))
+  endfunction exactxx
+
+  function exactxy(x,y,d1,d2,d3) !x derivative of solution 
+  implicit none
+  real *8::x,y,d1,d2,d3,exactxy
+  
+!  exactx = 1.0/2.0*x**3+d2*2*x+d3*(4*x**3-8*x*y**2)
+  exactxy = (-12)*d3*sqrt(x)*y
+  endfunction exactxy
+
+  function exactyy(x,y,d1,d2,d3) !x derivative of solution 
+  implicit none
+  real *8::x,y,d1,d2,d3,exactyy
+  
+!  exactx = 1.0/2.0*x**3+d2*2*x+d3*(4*x**3-8*x*y**2)
+  exactyy = (-8)*d3*x**(3.0d0/2.0d0)
+  endfunction exactyy
 
   SUBROUTINE firstder (d1,d2,d3,x,p,t,b,u,xory) !solves given the boundary u 
   implicit none
   integer::xory !x or y derivative? x=0,y=1
-    integer *8::N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
-    integer, dimension(:,:)::t
-    integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
-    real *8, dimension(:,:)::p!array of points, array of triangle vertices, and big L finite element array
-    real *8, dimension(:),allocatable::fu,val1,val2,arr,x,err !array of vertices along edge, array of <integral>g_i*f
-    real *8, dimension(3,3)::A !We will use this array in the process of finding equations of planes
-    real *8::det,temp !determinants of matrices, values to insert in sparse matrix
+  integer *8::N,NT,NV,NB,i,j,k,q !nx=elements in x, ny=elements in y, N=total number of elements
+  integer, dimension(:,:)::t
+  integer, dimension(:)::b
+  integer, dimension(:),allocatable::row1,col1,row2,col2,ia,ja
+  real *8, dimension(:,:)::p!array of points, array of triangle vertices, and big L finite element array
+  real *8, dimension(:),allocatable::fu,val1,val2,arr,x,err !array of vertices along edge, array of <integral>g_i*f
+  real *8, dimension(3,3)::A !We will use this array in the process of finding equations of planes
+  real *8::det,temp !determinants of matrices, values to insert in sparse matrix
   real *8::d1,d2,d3
   real *8,dimension(:)::u
     
@@ -131,6 +155,10 @@ MODULE mesh
           temp = fx((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0),d1,d2,d3) !2d midpoint rule
   elseif(xory==1)then
           temp = fy((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0),d1,d2,d3) !2d midpoint rule
+  elseif(xory==2)then
+          temp = fxx((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0),d1,d2,d3) !2d midpoint rule
+  elseif(xory==3)then
+          temp = fxy((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0),d1,d2,d3) !2d midpoint rule
   else
     write(*,*) "Wrong X/Y selection value"
   endif
@@ -206,7 +234,7 @@ MODULE mesh
     call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
   endsubroutine firstder
 
-  SUBROUTINE poissolve(d1,d2,d3,src_loc,x,src_val,areas) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
+  SUBROUTINE poissolve(d1,d2,d3,src_loc,x,src_val,areas,bound) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
   implicit none
   integer *8::N,NT,NV,NB,i,j,k,q,nedge !nx=elements in x, ny=elements in y, N=total number of elements
   integer, dimension(3)::tri
@@ -214,6 +242,7 @@ MODULE mesh
   integer, dimension(:),allocatable::b,row1,col1,row2,col2,ia,ja
   real *8, dimension(:,:),allocatable::p,src_loc !array of points, array of triangle vertices, and big L finite element array
   real *8, dimension(:),allocatable::fu,val1,val2,arr,src_val,x,areas !array of vertices along edge, array of <integral>g_i*f
+  real *8, dimension(:)::bound
   real *8, dimension(3,3)::A !We will use this array in the process of finding equations of planes
   real *8::d1,d2,d3,eps,del,kap,det,temp !determinants of matrices, values to insert in sparse matrix
   real *8, dimension(2)::centroid, pt1,pt2,pt3
@@ -234,10 +263,6 @@ MODULE mesh
     q = q+9
   end do
 
-  do i = 1,N
-    fu(i)=0
-    src_val=0
-  end do
   nedge = 0
   do i=1,nt
     tri = t(i,:)
@@ -256,6 +281,10 @@ MODULE mesh
   enddo
 
   allocate(src_val(NT+(2)*nedge),src_loc(2,NT+(2)*nedge),areas(NT+2*nedge))
+  do i = 1,N
+    fu(i)=0
+    src_val(i)=0
+  end do
 
   q = 1
   k = 1
@@ -332,7 +361,7 @@ MODULE mesh
     end if
   end do
   do i=1,NB !This loops through the b array and sets the corresponding row of L to all zeros except for the L(b(i),b(i)) spot. It also sets the f(b(i) cell to zero. This allows for correct evaluation of the edges.
-    fu(b(i)) = 0
+    fu(b(i)) = bound(i)
     do j = 1,NT*9
       if (row2(j) == b(i)) then
         if (col2(j) == b(i)) then

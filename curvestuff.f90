@@ -33,13 +33,12 @@ function lower(theta,tarc) !this function needs to be checked! not sure if it's 
     lower = 1
   endif
 end function lower
-
 subroutine dderpois(d1,d2,d3,infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   use mesh
   implicit none
   real *8,dimension(:,:),allocatable::gn,p,tran
-  real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly,areas&
-          ,solxx,solyy,solxy
+  real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,uxt,ubxx,ubxy
+  real *8,dimension(:),allocatable::un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,solxx,solyy,solxy,x
   real *8::d1,d2,d3,pi,ds,eps,del,kap,l,infi,findif
   real *8,dimension(2)::that,nhat,der,dder
   real *8,dimension(2,2)::flipmat
@@ -57,11 +56,10 @@ subroutine dderpois(d1,d2,d3,infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,are
   bsize = size(b)
   n = 3*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
   pi = 4.0d0*atan(1.0d0)
-  allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n),gn(n,n))
-  allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ux(n),uy(n),ubx(bsize),uby(bsize))
+  allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n))
+  allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ubx(bsize),uby(bsize),uxt(n),ubxx(bsize),ubxy(bsize),solyy(n))
   call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
 ! of angles which give equidistant points along the boundary
-
   do i = 1,n
     der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran) !array of first derivatives at those points
     dder = ddxddy(tarc(i),d1,d2,d3,findif,infi,tran) !array of second derivatives
@@ -74,10 +72,15 @@ subroutine dderpois(d1,d2,d3,infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,are
     ddy(i) = dder(2)
   enddo
 
-  call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for g_n
-  call gradyoupee(upx,upy,d1,d2,d3,ds,tarc,n,sol,infi,findif,tran,areas) !we have the gradient of u^p. 
-  call solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) ! solves for u^h
-  
+  call derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,yin,dx,dy,ddx,ddy,gn,tran,ubx,uby)
+  !Solve for solxx,solxy
+  do i =1,n
+    cxarr(i) = cmplx(ux(i),0.0D00,kind=16)
+  enddo
+  call specder(0.00d0,l,n,cxarr,uxt)
+  call gradyoupee(upx,upy,d1,d2,d3,ds,tarc,n,x,infi,findif,tran,areas,ubx)
+  call modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt)
+
   do i =1,n
     cxarr(i) = cmplx(uh(i),0.0D00,kind=16)
   enddo
@@ -102,59 +105,67 @@ subroutine dderpois(d1,d2,d3,infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,are
     j = upper(temp,tarc) !in our array of angles, find the index which is right above our point
     k = lower(temp,tarc) !find the one right below
 
-    ubx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j)) !interpolate x derivative boundary
-    uby(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
+    ubxx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j)) !interpolate x derivative boundary
+    ubxy(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
   enddo
   
   write(*,*) ('taking derivatives...')
-  call firstder(d1,d2,d3,solx,p,t,b,ubx,0)
-  call firstder(d1,d2,d3,soly,p,t,b,uby,1)
+  call firstder(d1,d2,d3,solxx,p,t,b,ubxx,2)
+  call firstder(d1,d2,d3,solxy,p,t,b,ubxy,3)
+
+  !solve solyy
+  do i=1,n
+    solyy(i) = foo(p(i,1),p(i,2),d1,d2,d3) - solxx(i)
+  enddo
 endsubroutine dderpois
 
-
-
-subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,areas) !solves poisson equation with first derivatives to second order error.
+subroutine derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,yin,dx,dy,ddx,&
+                ddy,gn,tran,ubx,uby) !solves poisson equation with first derivatives to second order error.
   use mesh
   implicit none
-  real *8,dimension(:,:),allocatable::gn,p,tran
-  real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly,areas
+  real *8,dimension(:,:),allocatable::gn
+  real *8,dimension(:,:)::p,tran
+  real *8,dimension(:)::tarc,rarc,dx,dy,ddx,ddy
+  real *8,dimension(:),allocatable::uh,xin,yin,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,bound
   real *8::d1,d2,d3,pi,ds,eps,del,kap,l,infi,findif
   real *8,dimension(2)::that,nhat,der,dder
   real *8,dimension(2,2)::flipmat
   real *8,dimension(7)::args
   real *8::det,temp
-  integer,dimension(:),allocatable::b
-  integer,dimension(:,:),allocatable::t
+  integer,dimension(:)::b
+  integer,dimension(:,:)::t
   integer::i,j,k,n,m,bsize
   complex *16,dimension(:),allocatable::cxarr
 
-  call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
-  call switchpars(eps,del,kap,d1,d2,d3)
-  args = (/d1,d2,d3,0.7d0,1.0d0*1e-14,1.0d0,0.0d0/)!arguments for findr
-  call fftgen(5000,args,tran)!generate the fft array
+!  call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
+!  call switchpars(eps,del,kap,d1,d2,d3)
+!  args = (/d1,d2,d3,0.7d0,1.0d0*1e-14,1.0d0,0.0d0/)!arguments for findr
+!  call fftgen(5000,args,tran)!generate the fft array
   bsize = size(b)
   n = 3*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
   pi = 4.0d0*atan(1.0d0)
 
-  allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n),gn(n,n))
-  allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ux(n),uy(n),ubx(bsize),uby(bsize))
-  call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
+  allocate(gn(n,n))
+  allocate(uh(n),cxarr(n),uhn(n),un(n),upn(n),ux(n),uy(n),bound(bsize))
+!  call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
 ! of angles which give equidistant points along the boundary
 
-  do i = 1,n
-    der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran) !array of first derivatives at those points
-    dder = ddxddy(tarc(i),d1,d2,d3,findif,infi,tran) !array of second derivatives
-    rarc(i) = findr_fft(tarc(i),tran) !array of radii away from the center of the tokamak (1,0)
-    xin(i) = 1.0d0 + rarc(i)*cos(tarc(i)) !x coordinates
-    yin(i) = rarc(i)*sin(tarc(i))! y coordinates
-    dx(i) = der(1) !put first derivatives in a size 2 array
-    dy(i) = der(2)
-    ddx(i) = dder(1) !same for second derivatives
-    ddy(i) = dder(2)
+!  do i = 1,n
+!    der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran) !array of first derivatives at those points
+!    dder = ddxddy(tarc(i),d1,d2,d3,findif,infi,tran) !array of second derivatives
+!    rarc(i) = findr_fft(tarc(i),tran) !array of radii away from the center of the tokamak (1,0)
+!    xin(i) = 1.0d0 + rarc(i)*cos(tarc(i)) !x coordinates
+!    yin(i) = rarc(i)*sin(tarc(i))! y coordinates
+!    dx(i) = der(1) !put first derivatives in a size 2 array
+!    dy(i) = der(2)
+!    ddx(i) = dder(1) !same for second derivatives
+!    ddy(i) = dder(2)
+!  enddo
+  do i=1,bsize
+    bound(i) = 0.0d0
   enddo
-
   call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for g_n
-  call gradyoupee(upx,upy,d1,d2,d3,ds,tarc,n,sol,infi,findif,tran,areas) !we have the gradient of u^p. 
+  call gradyoupee(upx,upy,d1,d2,d3,ds,tarc,n,sol,infi,findif,tran,areas,bound) !we have the gradient of u^p. 
   call solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) ! solves for u^h
   
   do i =1,n
@@ -184,13 +195,54 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,areas) !solves poisson
     ubx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j)) !interpolate x derivative boundary
     uby(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
   enddo
-  
+
   write(*,*) ('taking derivatives...')
   call firstder(d1,d2,d3,solx,p,t,b,ubx,0)
   call firstder(d1,d2,d3,soly,p,t,b,uby,1)
   
 end subroutine derpois
 
+subroutine modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt) !solves linear system for u^h
+  implicit none
+  integer::n,i,j,info
+  integer,dimension(n)::pvt
+  real *8::ds,norm
+  real *8,dimension(n)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,rhs,uxt
+  real *8,dimension(n,n)::lhs,gn
+  real *8,dimension(2)::ut
+  complex *16,dimension(n)::pot,potn,sigma,mu
+  complex *16,dimension(n,2)::grad  
+
+  do i = 1,n !in this loop, we build all the arrays necessary for l2dacquadwrapl to run
+    ones(i) = 1.0d0 
+    norm = sqrt(dx(i)**2+dy(i)**2)
+    rnx(i) = (1.0d0)*dy(i)/norm !x-component of normal derivative vector
+    rny(i) = (-1.0d0)*dx(i)/norm !y-component
+    ut = (/dx(i)/norm,dy(i)/norm/) !tangent unit vector
+    mu(i) = cmplx(0.0D0,0.0D0,kind=16) !the mu element in this integration is zero
+    sigma(i) = cmplx(upx(i)*ut(1)+upy(i)*ut(2)-uxt(i),kind=16)
+    do j=1,n !this nested loop builds the left hand side matrix, which should be 1/2*eye(n) + ds*g + ds^2*ones(n,n)
+      if(i==j) then
+        lhs(i,j) = 0.5d0 + ds*gn(i,j) + ds**2
+      else
+        lhs(i,j) = ds*gn(i,j) + ds**2
+      endif
+    enddo
+  enddo
+
+  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,4,1,4,-1,pot,potn,grad) !call integration routine
+
+  do i = 1,n
+    rhs(i) = (-1.0d0)*real(pot(i))
+    pvt(i) = 0
+  enddo
+
+  call dgesv(n,1,lhs,n,pvt,rhs,n,info) !solve linear system
+    
+  do i = 1,n
+    uh(i) = rhs(i)
+  enddo
+endsubroutine modsolveyouh
 
 subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for u^h
   implicit none
@@ -284,20 +336,21 @@ function gy(x,xp)
 end function gy
 
 
-subroutine gradyoupee(upx,upy,d1,d2,d3,ds,tarc,m,x,infi,findif,tran,areas) !computes u^p on the boundary of the tokamak using qbx-fmm integration methods.
+subroutine gradyoupee(upx,upy,d1,d2,d3,ds,tarc,m,x,infi,findif,tran,areas,bound) !computes u^p on the boundary of the tokamak using qbx-fmm integration methods.
     use mesh
     implicit none
     integer::n,m,i,nb
     real *8, dimension(:,:)::tran
     real *8, dimension(:,:), allocatable::srcloc,targloc,targnorm
-    real *8, dimension(:), allocatable::srcval,psol,x,y,tarc,r,upx,upy,areas
+    real *8, dimension(:)::tarc,bound
+    real *8, dimension(:), allocatable::srcval,psol,x,y,r,upx,upy,areas
     complex *16, dimension(:), allocatable::pot
     real *8:: d1,d2,d3,pi,ds,l,infi,findif
     real *8,dimension(7)::args
     real *8,dimension(2)::der
 
     pi = 4.0d0*atan(1.0d0)
-    call poissolve(d1,d2,d3,srcloc,x,srcval,areas)
+    call poissolve(d1,d2,d3,srcloc,x,srcval,areas,bound)
     n = size(srcval)
     allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
