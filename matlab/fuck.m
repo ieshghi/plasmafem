@@ -7,10 +7,16 @@ function [] = fuck(size)
     bedge = boundedges(p,t);
     b = unique(bedge);
 
-    length(b)
+    n=int2str(length(b));
 
-    save ../infiles/b.txt b -ASCII;
-    save ../infiles/p.txt p -ASCII;
-    save ../infiles/t.txt t -ASCII;
+    s1 = '../infiles/';
+    mkdir(strcat(s1,n))
+    sb = strcat(s1,n,'/b.txt');
+    sp = strcat(s1,n,'/p.txt');
+    st = strcat(s1,n,'/t.txt');
+
+    save(sb,'b','-ascii');
+    save(sp,'p','-ascii');
+    save(st,'t','-ascii');
 end
 

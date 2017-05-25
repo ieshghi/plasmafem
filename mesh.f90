@@ -228,7 +228,7 @@ MODULE mesh
     do i = 1,N !We want X to have an estimate of the solution to begin with... I start with 0, for lack of a better idea
         x(i) = 0
     end do
-    temp = 1e-6
+    temp = 1e-14
     i = NB/4
     q = i
     call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
