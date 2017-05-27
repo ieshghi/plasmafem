@@ -205,8 +205,6 @@ MODULE mesh
         end do
     end do
 
-
-
     k=0
     do i = 1,size(col2)  !find size of nonzero parts of the row and column arrays
         if(col2(i) /= 0) then
