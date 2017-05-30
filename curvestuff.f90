@@ -33,25 +33,12 @@ function lower(theta,tarc) !this function needs to be checked! not sure if it's 
     lower = 1
   endif
 end function lower
-<<<<<<< HEAD
-subroutine dderpois(d1,d2,d3,infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
+subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   use mesh
   implicit none
   real *8,dimension(:,:),allocatable::gn,p,tran
   real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,uxt,ubxx,ubxy
   real *8,dimension(:),allocatable::un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,solxx,solyy,solxy,x
-=======
-
-subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poisson equation with first derivatives to second order error.
-  !also important (less so) once done debugging, outputting ubx,uby, and b is unnecessary
-  use mesh
-  implicit none
-  real *8,dimension(:,:),allocatable::gn,p,tran
-  real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly
-  !for debugging
-  real *8,dimension(:),allocatable::fux,fuy,fun,fut
-  !\for debugging
->>>>>>> parent of 16c9463... CONVERGENCE
   real *8::d1,d2,d3,pi,ds,eps,del,kap,l,infi,findif
   real *8,dimension(2)::that,nhat,der,dder
   real *8,dimension(2,2)::flipmat
@@ -59,7 +46,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
   real *8::det,temp
   integer,dimension(:),allocatable::b
   integer,dimension(:,:),allocatable::t
-  integer::i,j,k,n,m,bsize
+  integer::i,j,k,n,m,bsize,ssize
   complex *16,dimension(:),allocatable::cxarr
 
   call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
@@ -70,7 +57,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
   n = 3*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
   pi = 4.0d0*atan(1.0d0)
   allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n))
-  allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ubx(bsize),uby(bsize),uxt(n),ubxx(bsize),ubxy(bsize),solyy(n))
+  allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ubx(bsize),uby(bsize),uxt(n),ubxx(bsize),ubxy(bsize))
   call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
 ! of angles which give equidistant points along the boundary
   do i = 1,n
@@ -86,6 +73,8 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
   enddo
 
   call derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,yin,dx,dy,ddx,ddy,gn,tran,ubx,uby)
+  ssize = size(sol)
+  allocate(solyy(ssize))
   !Solve for solxx,solxy
   do i =1,n
     cxarr(i) = cmplx(ux(i),0.0D00,kind=16)
@@ -106,8 +95,8 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
     upn(i) = upx(i)*nhat(1)+upy(i)*nhat(2)!dotting the gradient with nhat gives normal derivative
     un(i) = uhn(i) + upn(i)
     det = nhat(1)*that(2)-nhat(2)*that(1) !same for tangential derivative
-    ux(i) = 1.0d0/det*(un(i)*that(2)-0*nhat(2)) !the zero comes from the fact that we know u_t to be 0
-    uy(i) = 1.0d0/det*(0*nhat(1)-un(i)*that(1))
+    ux(i) = 1.0d0/det*(un(i)*that(2)-uxt(i)*nhat(2)) !the zero comes from the fact that we know u_t to be 0
+    uy(i) = 1.0d0/det*(uxt(i)*nhat(1)-un(i)*that(1))
   enddo
   
   do i = 1,bsize !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
@@ -127,7 +116,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,sol,p,t,b,ubx,uby) !solves poi
   call firstder(d1,d2,d3,solxy,p,t,b,ubxy,3)
 
   !solve solyy
-  do i=1,n
+  do i=1,ssize
     solyy(i) = foo(p(i,1),p(i,2),d1,d2,d3) - solxx(i)
   enddo
 endsubroutine dderpois
@@ -178,11 +167,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,
     bound(i) = 0.0d0
   enddo
   call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for g_n
-<<<<<<< HEAD
   call gradyoupee(upx,upy,d1,d2,d3,ds,tarc,n,sol,infi,findif,tran,areas,bound) !we have the gradient of u^p. 
-=======
-  call gradyoupee(upx,upy,d1,d2,d3,ds,tarc,n,sol,infi,findif,tran) !we have the gradient of u^p. 
->>>>>>> parent of 16c9463... CONVERGENCE
   call solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) ! solves for u^h
   
   do i =1,n
@@ -200,19 +185,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,
     ux(i) = 1.0d0/det*(un(i)*that(2)-0*nhat(2)) !the zero comes from the fact that we know u_t to be 0
     uy(i) = 1.0d0/det*(0*nhat(1)-un(i)*that(1))
     
-    !debugging
-    xin(i) = 1.0d0 + rarc(i)*cos(tarc(i)) !x coordinates
-    yin(i) = rarc(i)*sin(tarc(i))! y coordinates
-    fux(i) = exactx(xin(i),yin(i),d1,d2,d3)
-    fuy(i) = exacty(xin(i),yin(i),d1,d2,d3)
-    fun(i) = fux(i)*nhat(1)+fuy(i)*nhat(2)
-    fut(i) = fux(i)*that(1)+fuy(i)*that(2)
-    
-    write(1,*) upx(i),upy(i),upn(i),un(i),fun(i) 
-    !\debugging
-    
   enddo
-!  write(1,*) sum(fut)/(max(1,size(fut))), sqrt(float(size(p(:,1))))
   
   do i = 1,bsize !we linearly interpolate (along theta) the values of ux and uy on the boundary to the vertices of the relevant triangles
     temp = atan2(p(b(i),2),p(b(i),1)-1.0d0) !find the angle at which point i is along the boundary
@@ -366,33 +339,21 @@ function gy(x,xp)
 end function gy
 
 
-<<<<<<< HEAD
 subroutine gradyoupee(upx,upy,d1,d2,d3,ds,tarc,m,x,infi,findif,tran,areas,bound) !computes u^p on the boundary of the tokamak using qbx-fmm integration methods.
-=======
-subroutine gradyoupee(upx,upy,d1,d2,d3,ds,tarc,m,x,infi,findif,tran) !computes u^p on the boundary of the tokamak using qbx-fmm integration methods.
->>>>>>> parent of 16c9463... CONVERGENCE
     use mesh
     implicit none
     integer::n,m,i,nb
     real *8, dimension(:,:)::tran
     real *8, dimension(:,:), allocatable::srcloc,targloc,targnorm
-<<<<<<< HEAD
     real *8, dimension(:)::tarc,bound
     real *8, dimension(:), allocatable::srcval,psol,x,y,r,upx,upy,areas
-=======
-    real *8, dimension(:), allocatable::srcval,psol,x,y,tarc,r,upx,upy
->>>>>>> parent of 16c9463... CONVERGENCE
     complex *16, dimension(:), allocatable::pot
     real *8:: d1,d2,d3,pi,ds,l,infi,findif
     real *8,dimension(7)::args
     real *8,dimension(2)::der
 
     pi = 4.0d0*atan(1.0d0)
-<<<<<<< HEAD
     call poissolve(d1,d2,d3,srcloc,x,srcval,areas,bound)
-=======
-    call poissolve(d1,d2,d3,srcloc,x,srcval)
->>>>>>> parent of 16c9463... CONVERGENCE
     n = size(srcval)
     allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 

@@ -16,10 +16,11 @@ program testing
   infi = 1.0d0*1e-14
   findif = 1.0d0*1e-3
   call switchpars(ep,del,kap,d1,d2,d3)
-  call dderpois(d1,d2,d3,infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
+  call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   n = size(sol)
   nb = size(b)
   nt = size(t(:,1))
+
 
   allocate(ex(n),ey(n),exa(n),exx(n),eyy(n),exy(n),diffx(n),ratx(n),diffy(n),raty(n),exbx(nb),exby(nb)) !store exact solutions, for comparison
 
@@ -30,10 +31,6 @@ program testing
     exx(i) = exactxx(p(i,1),p(i,2),d1,d2,d3)
     exy(i) = exactxy(p(i,1),p(i,2),d1,d2,d3)
     eyy(i) = exactyy(p(i,1),p(i,2),d1,d2,d3)
-    diffx(i) = ex(i)-solx(i)
-    diffy(i) = ey(i)-soly(i)
-    ratx(i) = solx(i)/ex(i)
-    raty(i) = soly(i)/ey(i)
   enddo
 
   stdev = 0.0d0
