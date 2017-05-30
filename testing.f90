@@ -4,10 +4,10 @@ program testing
   implicit none
   real *8:: ep,del,kap,infi,findif,d1,d2,d3,stdev
   real *8, dimension(:),allocatable::solx,soly,sol,ubx,uby,ex,ey,exa,exx,eyy,exy,ratx,&
-          raty,diffx,diffy,exbx,exby,areas,solxx,solxy,solyy
-  real *8, dimension(:,:),allocatable::p
+          raty,diffx,diffy,exbx,exby,areas,areas2,solxx,solxy,solyy,solx2,soly2,sol2
+  real *8, dimension(:,:),allocatable::p,p2
   integer,dimension(:),allocatable::b
-  integer,dimension(:,:),allocatable::t
+  integer,dimension(:,:),allocatable::t,t2
   integer::i,n,nb,nt
 
   ep = 0.32d0
@@ -20,7 +20,6 @@ program testing
   n = size(sol)
   nb = size(b)
   nt = size(t(:,1))
-
 
   allocate(ex(n),ey(n),exa(n),exx(n),eyy(n),exy(n),diffx(n),ratx(n),diffy(n),raty(n),exbx(nb),exby(nb)) !store exact solutions, for comparison
 
