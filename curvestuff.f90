@@ -1,38 +1,6 @@
 module curvestuff
 contains
 
-function upper(theta,tarc) !this function needs to be checked! not sure if it's doing its work
-  implicit none
-  real *8,dimension(:)::tarc
-  real *8::theta
-  integer::n,upper,i
-  n = size(tarc)
-  upper = 0
-  do i = 1,n
-    if(tarc(i)>theta .and. upper==0) then
-  upper=i
-    endif
-  enddo
-  if (upper==0) then
-    upper = 1
-  endif
-end function upper
-function lower(theta,tarc) !this function needs to be checked! not sure if it's doing its work
-  implicit none
-  real *8,dimension(:)::tarc
-  real *8::theta
-  integer::n,lower,i
-  n = size(tarc)
-  lower = 0
-  do i = 1,n
-    if(tarc(i)<theta) then
-  lower=i
-    endif
-  enddo
-  if (lower==0) then
-    lower = 1
-  endif
-end function lower
 subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   use mesh
   implicit none
@@ -56,10 +24,12 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   bsize = size(b)
   n = 3*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
   pi = 4.0d0*atan(1.0d0)
+  allocate(gn(n,n))
   allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n))
   allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ubx(bsize),uby(bsize),uxt(n),ubxx(bsize),ubxy(bsize))
   call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
 ! of angles which give equidistant points along the boundary
+
   do i = 1,n
     der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran) !array of first derivatives at those points
     dder = ddxddy(tarc(i),d1,d2,d3,findif,infi,tran) !array of second derivatives
@@ -72,13 +42,16 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
     ddy(i) = dder(2)
   enddo
   
+  call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for g_n
   call derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,yin,dx,dy,ddx,ddy,gn,tran,ubx,uby,ds,l)
+  
   ssize = size(sol)
   allocate(solyy(ssize))
   !Solve for solxx,solxy
   do i =1,n
     cxarr(i) = cmplx(ux(i),0.0D00,kind=16)
   enddo
+
   call specder(0.00d0,l,n,cxarr,uxt)
   call gradyoupee(upx,upy,d1,d2,d3,tarc,n,x,infi,findif,tran,areas,ubx)
   call modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt)
@@ -86,7 +59,7 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   do i =1,n
     cxarr(i) = cmplx(uh(i),0.0D00,kind=16)
   enddo
-  
+
   call specder(0.0d0,l,n,cxarr,uhn) !spectral derivative of u^h gives us u^h_t, which is equal to u^h_n
 
   do i = 1,n
@@ -94,8 +67,8 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
     that = (/dx(i)/sqrt(dx(i)**2+dy(i)**2),dy(i)/sqrt(dx(i)**2+dy(i)**2)/)
     upn(i) = upx(i)*nhat(1)+upy(i)*nhat(2)!dotting the gradient with nhat gives normal derivative
     un(i) = uhn(i) + upn(i)
-    det = nhat(1)*that(2)-nhat(2)*that(1) !same for tangential derivative
-    ux(i) = 1.0d0/det*(un(i)*that(2)-uxt(i)*nhat(2)) !the zero comes from the fact that we know u_t to be 0
+    det = nhat(1)*that(2)-nhat(2)*that(1) !convert from tangential coords to x,y
+    ux(i) = 1.0d0/det*(un(i)*that(2)-uxt(i)*nhat(2)) 
     uy(i) = 1.0d0/det*(uxt(i)*nhat(1)-un(i)*that(1))
   enddo
   
@@ -109,7 +82,8 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
     ubxx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j)) !interpolate x derivative boundary
     ubxy(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
   enddo
-  
+ 
+
   write(*,*) ('taking derivatives...')
   call firstder(d1,d2,d3,solxx,p,t,b,ubxx,2)
   call firstder(d1,d2,d3,solxy,p,t,b,ubxy,3)
@@ -124,7 +98,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,
                 ddy,gn,tran,ubx,uby,ds,l) !solves poisson equation with first derivatives to second order error.
   use mesh
   implicit none
-  real *8,dimension(:,:),allocatable::gn
+  real *8,dimension(:,:)::gn
   real *8,dimension(:,:)::p,tran
   real *8,dimension(:)::tarc,rarc,dx,dy,ddx,ddy
   real *8,dimension(:),allocatable::uh,xin,yin,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,bound
@@ -138,35 +112,16 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,
   integer::i,j,k,n,m,bsize
   complex *16,dimension(:),allocatable::cxarr
 
-!  call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
-!  call switchpars(eps,del,kap,d1,d2,d3)
-!  args = (/d1,d2,d3,0.7d0,1.0d0*1e-14,1.0d0,0.0d0/)!arguments for findr
-!  call fftgen(5000,args,tran)!generate the fft array
   bsize = size(b)
   n = 3*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
   pi = 4.0d0*atan(1.0d0)
 
-  allocate(gn(n,n))
   allocate(uh(n),cxarr(n),uhn(n),un(n),upn(n),ux(n),uy(n),bound(bsize))
-!  call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
-! of angles which give equidistant points along the boundary
-
-!  do i = 1,n
-!    der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran) !array of first derivatives at those points
-!    dder = ddxddy(tarc(i),d1,d2,d3,findif,infi,tran) !array of second derivatives
-!    rarc(i) = findr_fft(tarc(i),tran) !array of radii away from the center of the tokamak (1,0)
-!    xin(i) = 1.0d0 + rarc(i)*cos(tarc(i)) !x coordinates
-!    yin(i) = rarc(i)*sin(tarc(i))! y coordinates
-!    dx(i) = der(1) !put first derivatives in a size 2 array
-!    dy(i) = der(2)
-!    ddx(i) = dder(1) !same for second derivatives
-!    ddy(i) = dder(2)
-!  enddo
+  
   do i=1,bsize
     bound(i) = 0.0d0
   enddo
 
-  call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for g_n
   call gradyoupee(upx,upy,d1,d2,d3,tarc,n,sol,infi,findif,tran,areas,bound) !we have the gradient of u^p. 
   call solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) ! solves for u^h  
   
@@ -222,7 +177,7 @@ subroutine modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt) !solves linear sys
     rny(i) = (-1.0d0)*dx(i)/norm !y-component
     ut = (/dx(i)/norm,dy(i)/norm/) !tangent unit vector
     mu(i) = cmplx(0.0D0,0.0D0,kind=16) !the mu element in this integration is zero
-    sigma(i) = cmplx(upx(i)*ut(1)+upy(i)*ut(2)-uxt(i),kind=16)
+    sigma(i) = cmplx(upx(i)*ut(1)+upy(i)*ut(2)-uxt(i),0.0D0,kind=16)
     do j=1,n !this nested loop builds the left hand side matrix, which should be 1/2*eye(n) + ds*g + ds^2*ones(n,n)
       if(i==j) then
         lhs(i,j) = 0.5d0 + ds*gn(i,j) + ds**2
@@ -232,7 +187,7 @@ subroutine modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt) !solves linear sys
     enddo
   enddo
 
-  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,4,1,4,-1,pot,potn,grad) !call integration routine
+  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,1,1,1,-1,pot,potn,grad) !call integration routine
 
   do i = 1,n
     rhs(i) = (-1.0d0)*real(pot(i))
@@ -274,7 +229,7 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
     enddo
   enddo
 
-  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,4,1,4,-1,pot,potn,grad) !call integration routine
+  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,1,1,1,-1,pot,potn,grad) !call integration routine
 
   do i = 1,n
     rhs(i) = (-1.0d0)*real(pot(i))
@@ -366,10 +321,10 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,tarc,m,x,infi,findif,tran,areas,bound) !c
       targnorm(2,i) = (-1.0d0)*der(1)/sqrt(der(1)**2+der(2)**2)
     enddo  
 
-    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,4,-1,pot)
+    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,1,-1,pot)
 
   do i = 1,m
-    upx(i) = (-1.0d0)*real(pot(i)) !this might have to be revised, depending on the convention for the normal direction (in/out)
+    upx(i) = (-1.0d0)*real(pot(i)) 
     upy(i) = (1.0d0)*imag(pot(i))
   enddo
 
@@ -732,4 +687,36 @@ function interp1d(x,x1,x2,y1,y2)
 
   interp1d = y1*(1.0d0-(x-x1)/(x2-x1))+y2*((x-x1)/(x2-x1))
 end function interp1d
+function upper(theta,tarc) !finds first index in ordered array tarc which is larger than theta
+  implicit none
+  real *8,dimension(:)::tarc
+  real *8::theta
+  integer::n,upper,i
+  n = size(tarc)
+  upper = 0
+  do i = 1,n
+    if(tarc(i)>theta .and. upper==0) then
+  upper=i
+    endif
+  enddo
+  if (upper==0) then
+    upper = 1
+  endif
+end function upper
+function lower(theta,tarc) !finds last index in ordered array tarc which is smaller than theta
+  implicit none
+  real *8,dimension(:)::tarc
+  real *8::theta
+  integer::n,lower,i
+  n = size(tarc)
+  lower = 0
+  do i = 1,n
+    if(tarc(i)<theta) then
+  lower=i
+    endif
+  enddo
+  if (lower==0) then
+    lower = 1
+  endif
+end function lower
 end module curvestuff
