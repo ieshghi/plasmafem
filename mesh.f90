@@ -234,8 +234,9 @@ MODULE mesh
     call mgmres_st(N,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
   endsubroutine firstder
 
-  SUBROUTINE poissolve(d1,d2,d3,src_loc,x,src_val,areas,bound) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
+  SUBROUTINE poissolve(d1,d2,d3,src_loc,x,src_val,areas,bound,order) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
   implicit none
+  integer::order
   integer *8::N,NT,NV,NB,i,j,k,q,nedge !nx=elements in x, ny=elements in y, N=total number of elements
   integer, dimension(3)::tri
   integer, dimension(:,:),allocatable::t
@@ -301,8 +302,11 @@ MODULE mesh
       val1(q+j) = (-1)*(A(1,j/3+1)*A(1,modulo(j,3)+1)+A(2,j/3+1)*A(2,modulo(j,3)+1))*det*0.5
     end do
     q = q+9
-    temp = foo((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0),d1,d2,d3) !2d midpoint rule
-
+    if (order==1)then 
+        temp = foo((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0),d1,d2,d3) !2d midpoint rule
+    elseif(order==2)then
+        temp = fx((p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0),(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0),d1,d2,d3) !2d midpoint rule
+    endif
     fu(t(i,1)) = fu(t(i,1)) + det*0.5*temp/3.0 !Here, we add the result of the convolution of the basis function with the right hand side of the Poisson equation, which gives us the right hand side vector in the finite element equation.
     fu(t(i,2)) = fu(t(i,2)) + det*0.5*temp/3.0
     fu(t(i,3)) = fu(t(i,3)) + det*0.5*temp/3.0
@@ -319,15 +323,27 @@ MODULE mesh
       
       src_loc(1,k) = pt1(1)
       src_loc(2,k) = pt1(2)
-      src_val(k) = foo(pt1(1),pt1(2),d1,d2,d3)*det*0.5/3
+      if(order==1)then
+          src_val(k) = foo(pt1(1),pt1(2),d1,d2,d3)*det*0.5/3
+      elseif(order==2)then
+          src_val(k) = fx(pt1(1),pt1(2),d1,d2,d3)*det*0.5/3
+      endif
       areas(k) = det*0.5/3
       src_loc(1,k+1) = pt2(1)
       src_loc(2,k+1) = pt2(2)
-      src_val(k+1) = foo(pt2(1),pt2(2),d1,d2,d3)*det*0.5/3
+      if(order==1)then
+        src_val(k+1) = foo(pt2(1),pt2(2),d1,d2,d3)*det*0.5/3
+      elseif(order==2)then
+        src_val(k+1) = fx(pt2(1),pt2(2),d1,d2,d3)*det*0.5/3
+      endif
       areas(k+1) = det*0.5/3
       src_loc(1,k+2) = pt3(1)
       src_loc(2,k+2) = pt3(2)
-      src_val(k+2) = foo(pt3(1),pt3(2),d1,d2,d3)*det*0.5/3
+      if(order==1)then
+        src_val(k+2) = foo(pt3(1),pt3(2),d1,d2,d3)*det*0.5/3
+      elseif(order==2)then
+        src_val(k+2) = fx(pt3(1),pt3(2),d1,d2,d3)*det*0.5/3
+      endif
       areas(k+2) = det*0.5/3
       k = k+3    
     else
