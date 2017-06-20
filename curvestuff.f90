@@ -187,7 +187,7 @@ subroutine modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt) !solves linear sys
     enddo
   enddo
 
-  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,1,1,1,-1,pot,potn,grad) !call integration routine
+  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,3,1,3,-1,pot,potn,grad) !call integration routine
 
   do i = 1,n
     rhs(i) = (-1.0d0)*real(pot(i))
@@ -229,7 +229,7 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
     enddo
   enddo
 
-  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,1,1,1,-1,pot,potn,grad) !call integration routine
+  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,3,1,3,-1,pot,potn,grad) !call integration routine
 
   do i = 1,n
     rhs(i) = (-1.0d0)*real(pot(i))
@@ -321,7 +321,7 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,tarc,m,x,infi,findif,tran,areas,bound,ord
       targnorm(2,i) = (-1.0d0)*der(1)/sqrt(der(1)**2+der(2)**2)
     enddo  
 
-    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,1,-1,pot)
+    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,3,-1,pot)
 
   do i = 1,m
     upx(i) = (-1.0d0)*real(pot(i)) 

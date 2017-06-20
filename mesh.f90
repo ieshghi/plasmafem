@@ -10,11 +10,9 @@ MODULE mesh
   real *8 exact
   pi = 4*atan(1.0)
 
-
   !exact = 1.0/8.0*x**4+d1+d2*x**2+d3*(x**4-4*(x**2)*(y**2))
   exact = (1.0/8.0*x**4+d1+d2*x**2+d3*(x**4-4*(x**2)*(y**2)))/sqrt(x)
-
-!  exact = 1-(x*x+y*y) 
+  !exact = 1-(x*x+y*y) 
   !exact = x*(1-x)*y*(1-y)
   !exact = (-1)*0.5*(1.0/pi)*(1.0/pi)*(sin(pi*x)*sin(pi*y))
   END FUNCTION exact  
@@ -24,10 +22,9 @@ MODULE mesh
   real *8,intent(in):: x,y,d1,d2,d3
   real *8:: foo
   
-
-        !foo = 3.0/2.0*x**2+2*d2+d3*(12*x**2-4*2*y**2-4*2*x**2)
-        foo = (24*d1+(x**2)*(24*d2+(x**2)*(24*d3+35)-96*d3*y**2))/(32*x**(5.0d0/2.0d0))
-!  foo = -4.0 
+  !foo = 3.0/2.0*x**2+2*d2+d3*(12*x**2-4*2*y**2-4*2*x**2)
+  foo = (24*d1+(x**2)*(24*d2+(x**2)*(24*d3+35)-96*d3*y**2))/(32*x**(5.0d0/2.0d0))
+  !foo = -4.0 
   !foo = 2*(x*x-x+y*y-y)
   !foo = sin(pi*x)*sin(pi*y)
   END FUNCTION foo
@@ -37,7 +34,7 @@ MODULE mesh
   real *8::x,y,d1,d2,d3,fx
 
   !fx =3*x+d3*(24*x-4*4*x)
-        fx = 3*((x**2)*((-8)*d2+(x**2)*(24*d3+35)+32*d3*y**2)-40*d1)/(64*x**(7.0d0/2.0d0))
+  fx = 3*((x**2)*((-8)*d2+(x**2)*(24*d3+35)+32*d3*y**2)-40*d1)/(64*x**(7.0d0/2.0d0))
   endfunction fx
 
   function fxx(x,y,d1,d2,d3) !x derivative of rhs

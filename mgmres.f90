@@ -891,8 +891,8 @@ subroutine mgmres_st ( n, nz_num, ia, ja, a, x, rhs, itr_max, mr, tol_abs, &
 !  if ( verbose ) then
 !    write ( *, '(a)'       ) ' '
 !    write ( *, '(a)'       ) 'MGMRES_ST:'
-    write ( *, '(a,i8)'    ) '  Iterations = ', itr_used
-    write ( *, '(a,g14.6)' ) '  Final residual = ', rho
+!    write ( *, '(a,i8)'    ) '  Iterations = ', itr_used
+!    write ( *, '(a,g14.6)' ) '  Final residual = ', rho
 !  end if
 
   return

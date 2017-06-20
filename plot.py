@@ -127,9 +127,10 @@ def conver(slope=-2,der=0,offset=0):
   
   ax.plot((-1)*np.log10(c),np.log10(conv),label='Result')
   ax.plot((-1)*np.log10(c),slope*np.log10(c[0])-slope*np.log10(c)+np.log10(conv[0]),label='Expected')
-  ax.set_title('Linear elements $u$ convergence')
+
+  ax.set_title('Linear elements convergence')
       
-  ax.set_xlabel('log10(h)')
+  ax.set_xlabel('-log10(h)')
   ax.set_ylabel('log10(Error)')
   ax.legend()
   ax.plot()  
