@@ -1,8 +1,57 @@
 module curvestuff
 contains
 
+        
+subroutine gssolve_wrapper(p,t,b,srcloc,answer,srcval,areas,bound,order,sol)
+  use mesh
+  use functions
+  implicit none
+  real *8,parameter::small = 1e-14
+  real *8::error
+  integer:: order,nt,i,n
+  real *8, dimension(:),allocatable::guess,answer
+  real *8, dimension(:,:)::p
+  integer, dimension(:,:)::t
+  integer, dimension(:)::b
+  real *8, dimension(:,:), allocatable::srcloc
+  real *8, dimension(:)::bound
+  real *8, dimension(:),optional::sol
+  real *8, dimension(:), allocatable::srcval,areas,x
+  
+  n = size(p(:,1))
+  allocate(guess(n),answer(n))
+  error = 1000
+  if(order==1)then
+    do i=1,n
+      guess(i) = 1
+    enddo
+    do while(error>small)
+      if(allocated(srcloc).eqv..true.) then
+        deallocate(srcloc,srcval,areas,x)
+      endif
+    
+      call gssolve(p,t,b,srcloc,x,srcval,areas,bound,order,guess)
+    
+      error=0
+      do i=1,n
+        error = error + (x(i)-guess(i))**2
+        guess(i) = x(i)
+      enddo
+      error = sqrt(error)
+    enddo
+  elseif(order==2)then
+    do i=1,n
+      guess(i) = sol(i)
+    enddo
+    call gssolve(p,t,b,srcloc,x,srcval,areas,bound,order,guess)
+  endif
+
+  answer = x
+endsubroutine gssolve_wrapper
+
 subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   use mesh
+  use functions
   implicit none
   real *8,dimension(:,:),allocatable::gn,p,tran
   real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,uxt,ubxx,ubxy
@@ -53,7 +102,7 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   enddo
 
   call specder(0.00d0,l,n,cxarr,uxt)
-  call gradyoupee(upx,upy,d1,d2,d3,tarc,n,x,infi,findif,tran,areas,ubx,2)
+  call gradyoupee(upx,upy,d1,d2,d3,p,t,b,tarc,n,x,infi,findif,tran,areas,ubx,2,sol)
   call modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt)
 
   do i =1,n
@@ -85,8 +134,8 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
  
 
   write(*,*) ('taking derivatives...')
-  call firstder(d1,d2,d3,solxx,p,t,b,ubxx,2)
-  call firstder(d1,d2,d3,solxy,p,t,b,ubxy,3)
+  call weirdder(solxx,p,t,b,ubxx,2,sol,solx)
+  call weirdder(solxy,p,t,b,ubxy,3,sol,soly)
 
   !solve solyy
   do i=1,ssize
@@ -97,6 +146,7 @@ endsubroutine dderpois
 subroutine derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,yin,dx,dy,ddx,&
                 ddy,gn,tran,ubx,uby,ds,l) !solves poisson equation with first derivatives to second order error.
   use mesh
+  use functions
   implicit none
   real *8,dimension(:,:)::gn
   real *8,dimension(:,:)::p,tran
@@ -122,10 +172,8 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,
     bound(i) = 0.0d0
   enddo
 
-  call gradyoupee(upx,upy,d1,d2,d3,tarc,n,sol,infi,findif,tran,areas,bound,1) !we have the gradient of u^p. 
+  call gradyoupee(upx,upy,d1,d2,d3,p,t,b,tarc,n,sol,infi,findif,tran,areas,bound,1) !we have the gradient of u^p. 
   call solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) ! solves for u^h  
-  
-  
   do i =1,n
     cxarr(i) = cmplx(uh(i),0.0D00,kind=16)
   enddo
@@ -155,8 +203,9 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,
   enddo
 
   write(*,*) ('taking derivatives...')
-  call firstder(d1,d2,d3,solx,p,t,b,ubx,0)
-  call firstder(d1,d2,d3,soly,p,t,b,uby,1)
+  
+  call weirdder(solx,p,t,b,ubx,0,sol)
+  call weirdder(soly,p,t,b,uby,1,sol)
 end subroutine derpois
 
 subroutine modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt) !solves linear system for u^h
@@ -243,7 +292,6 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
   enddo
 endsubroutine solveyouh
 
-
 subroutine getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !xin,yin should come from the arcparam subroutine, n is their length
     implicit none
     integer::n,i,j,k
@@ -273,7 +321,6 @@ subroutine getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !xin,yin should come from the ar
     
 end subroutine getgnmat
 
-
 function gx(x,xp)
     implicit none
     real *8,dimension(2)::x,xp
@@ -292,22 +339,31 @@ function gy(x,xp)
     gy=(1.0d0/(2.0d0*pi))*(xp(2)-x(2))*((x(1)-xp(1))**2+(x(2)-xp(2))**2)**(-1)
 end function gy
 
-
-subroutine gradyoupee(upx,upy,d1,d2,d3,tarc,m,x,infi,findif,tran,areas,bound,order) !computes u^p on the boundary of the tokamak using qbx-fmm integration methods.
+subroutine gradyoupee(upx,upy,d1,d2,d3,p,t,b,tarc,m,x,infi,findif,tran,areas,bound,order,sol) !computes u^p on the boundary of the tokamak using qbx-fmm integration methods.
     use mesh
+    use functions
     implicit none
     integer::n,m,i,nb,order
     real *8, dimension(:,:)::tran
     real *8, dimension(:,:), allocatable::srcloc,targloc,targnorm
     real *8, dimension(:)::tarc,bound
+    real *8, dimension(:),optional::sol
     real *8, dimension(:), allocatable::srcval,psol,x,y,r,upx,upy,areas
     complex *16, dimension(:), allocatable::pot
     real *8:: d1,d2,d3,pi,l,infi,findif
     real *8,dimension(7)::args
     real *8,dimension(2)::der
+    real *8, dimension(:,:)::p
+    integer, dimension(:,:)::t
+    integer, dimension(:)::b
 
     pi = 4.0d0*atan(1.0d0)
-    call poissolve(d1,d2,d3,srcloc,x,srcval,areas,bound,order)
+    
+    if(order==1)then
+      call gssolve_wrapper(p,t,b,srcloc,x,srcval,areas,bound,order)
+    elseif(order==2)then
+      call gssolve_wrapper(p,t,b,srcloc,x,srcval,areas,bound,order,sol)
+    endif
     n = size(srcval)
     allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
@@ -549,6 +605,7 @@ endfunction findr_fft
 subroutine fftgen(n,args,tran)
   use,intrinsic::iso_c_binding
   use mesh
+  use functions
   implicit none
   include '/usr/include/fftw3.f03'
   type (c_ptr) :: plan
