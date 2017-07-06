@@ -3,21 +3,23 @@ module mesh
   implicit none
   contains
   
-  subroutine weirdder (x,p,t,b,u,xory,uat,uxat) !solves given the boundary u 
+  subroutine weirdder (x,p,t,b,u,xory,uat,uxat) !Solves grad-shafranov with no oversampling, and given a boundary u. Also given
+!          solutions uat (solution to first equation), and uxat (can contain first derivative in x or y)
   use functions
   implicit none
-  integer::xory !x or y derivative? x=0,y=1
-  integer *8::n,nt,nv,nb,i,j,k,q !nx=elements in x, ny=elements in y, n=total number of elements
+  integer::xory !Which solve are we doing? 
+  integer *8::n,nt,nv,nb,i,j,k,q 
   integer, dimension(:,:)::t
   integer, dimension(:)::b
   integer, dimension(:),allocatable::row1,col1,row2,col2,ia,ja
   real *8, dimension(:),optional::uxat
-  real *8, dimension(:,:)::p!array of points, array of triangle vertices, and big l finite element array
-  real *8, dimension(:),allocatable::fu,val1,val2,arr,x,err !array of vertices along edge, array of <integral>g_i*f
-  real *8, dimension(3,3)::a !we will use this array in the process of finding equations of planes
-  real *8::det,temp !determinants of matrices, values to insert in sparse matrix
+  real *8, dimension(:,:)::p
+  real *8, dimension(:),allocatable::fu,val1,val2,arr,x,err 
+  real *8, dimension(3,3)::a
+  real *8::det,temp
   real *8::cx,cy
   real *8,dimension(:)::u,uat
+
   nt = size(t(:,1))
   nv = size(p(:,1))
   nb = size(b)
@@ -33,34 +35,38 @@ module mesh
   q = q+9
   end do
   do i = 1,n
-    fu(i)=0
+    fu(i)=0 !initialise right hand side vector to 0
   end do
   q = 1
-  do i = 1,nt !loop through triangles to add entries into the vals vector, and build the f vector
-    do j =1,3 !we build the array with x1,y1,x2,y2,...
+  do i = 1,nt !loop through triangles to add entries into the stiffness matrix and right hand side
+    do j =1,3 !Trick to get the integral of dot product of two plane basis functions. First build this array A
       a(j,1) = (p(t(i,j),1))
       a(j,2) = (p(t(i,j),2))
       a(j,3) = 1.0
     end do
 
     det = abs(threedet(a)) !this computes the determinant of that matrix, which is used to compute the area of the triangle in question
-    call threeinv(a)
+    call threeinv(a) !We invert the array
     do j=0,8
-      val1(q+j) = (-1)*(a(1,j/3+1)*a(1,modulo(j,3)+1)+a(2,j/3+1)*a(2,modulo(j,3)+1))*det*0.5
+      val1(q+j) = (-1)*(a(1,j/3+1)*a(1,modulo(j,3)+1)+a(2,j/3+1)*a(2,modulo(j,3)+1))*det*0.5 !This somehow just gives the answer...
       val1(q+j) = val1(q+j) + (-1)*1./9*stiff((p(t(i,1),1)+p(t(i,2),1)+&
-        p(t(i,3),1))/3,(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/3)*det*0.5 !Not sure if this is the right expression to fill the matrix...
+        p(t(i,3),1))/3,(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/3)*det*0.5 !And this gives us the correction to the stiffness matrix,
+!which we evaluate with a coarse midpoint rule. 
+!for the "weird poisson equation"
     end do
-    q = q+9
-    cx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0)
+    q = q+9 !We have a bizarre looping structure. Each triangle contributes to nine spots in the matrix
+    cx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !coordinates of the centroid of the triangle in question
     cy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
-    if(xory==0)then
-      temp = gsrhsx((uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy) !2d midpoint rule
+    if(xory==0)then !xory can take four values, each of which corresponds to a different derivative. 
+      temp = gsrhsx((uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy) !2d midpoint rule for the right hand side. 
     elseif(xory==1)then
-      temp = gsrhsy((uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy) !2d midpoint rule
+      temp = gsrhsy((uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy)
     elseif(xory==2)then
-      temp = gsrhsxx((uxat(t(i,1))+uxat(t(i,2)) + uxat(t(i,3)))/3,(uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy) !2d midpoint rule
+      temp = gsrhsxx((uxat(t(i,1))+uxat(t(i,2)) + uxat(t(i,3)))/3,(uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy)
     elseif(xory==3)then
-      temp = gsrhsxy((uat(t(i,1))+uat(t(i,2)) + uat(t(i,3)))/3,(uxat(t(i,1))+uxat(t(i,2))+uxat(t(i,3)))/3,cx,cy) !2d midpoint rule
+      temp = gsrhsxy((uat(t(i,1))+uat(t(i,2)) + uat(t(i,3)))/3,(uxat(t(i,1))+uxat(t(i,2))+uxat(t(i,3)))/3,cx,cy)!uxat seems like it
+      !      contains an x-derivative of the function, but in this case we are feeding in a y-derivative. I didn't want to declare
+      !      two redundant arrays.
     else
       write(*,*) "wrong x/y selection value"
     endif
@@ -92,7 +98,8 @@ module mesh
       j = j+1
     end if
   end do
-  do i=1,nb !this loops through the b array and sets the corresponding row of l to all zeros except for the l(b(i),b(i)) spot. it also sets the f(b(i) cell to zero. this allows for correct evaluation of the edges.
+  do i=1,nb !this loops through the b array and sets the corresponding row of l to all zeros except for the l(b(i),b(i)) spot. it
+!  also sets the f(b(i) cell to whatever our boundary conditions say it has to be. this allows for correct evaluation of the edges.
     fu(b(i)) = u(i)
     do j = 1,nt*9
       if (row2(j) == b(i)) then
@@ -127,25 +134,26 @@ module mesh
   end do
   temp = 1e-16
   i = nb/4
-  q = i
+  q = i*4
   call mgmres_st(n,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
   endsubroutine weirdder
 
-  subroutine gssolve(p,t,b,src_loc,x,src_val,areas,bound,order,guess) !src_val is used in other codes, it is an array of f(x)*triangle_are @ centroids of triangles
+  subroutine gssolve(p,t,b,src_loc,x,src_val,areas,bound,order,guess) !Different G-S solver, which oversamples 3x the boundary
+             !triangles, and spits out a srcloc array (centroids of triangles), and srcval (right hand side at those points)
   use functions
   implicit none
   integer::order
-  integer *8::n,nt,nv,nb,i,j,k,q,nedge !nx=elements in x, ny=elements in y, n=total number of elements
+  integer *8::n,nt,nv,nb,i,j,k,q,nedge
   integer, dimension(3)::tri
   integer, dimension(:,:)::t
   integer, dimension(:)::b
   real *8, dimension(:,:)::p 
   integer, dimension(:),allocatable::row1,col1,row2,col2,ia,ja
-  real *8, dimension(:,:),allocatable::src_loc !array of points, array of triangle vertices, and big l finite element array
-  real *8, dimension(:),allocatable::fu,val1,val2,arr,src_val,x,areas !array of vertices along edge, array of <integral>g_i*f
+  real *8, dimension(:,:),allocatable::src_loc
+  real *8, dimension(:),allocatable::fu,val1,val2,arr,src_val,x,areas
   real *8, dimension(:)::bound,guess
-  real *8, dimension(3,3)::a !we will use this array in the process of finding equations of planes
-  real *8::cgs,cx,cy,eps,del,kap,det,temp !determinants of matrices, values to insert in sparse matrix
+  real *8, dimension(3,3)::a
+  real *8::cgs,cx,cy,det,temp
   real *8, dimension(2)::centroid, pt1,pt2,pt3
   logical, dimension(:),allocatable::edgetri
   
@@ -164,7 +172,7 @@ module mesh
     q = q+9
   end do
 
-  nedge = 0
+  nedge = 0 !we want to count the number of edge triangles, to oversample them
   do i=1,nt
     tri = t(i,:)
     k=0
@@ -174,74 +182,74 @@ module mesh
       endif
     enddo
     if(k==1)then
-      edgetri(i)=.true.
-      nedge = nedge+1 
+      edgetri(i)=.true. !edgetri tells us which triangles are on the edge
+      nedge = nedge+1 !nedge tells us how many triangles are on the edge
     else
       edgetri(i)=.false.
     endif
   enddo
 
-  allocate(src_val(nt+(2)*nedge),src_loc(2,nt+(2)*nedge),areas(nt+2*nedge))
+  allocate(src_val(nt+(2)*nedge),src_loc(2,nt+(2)*nedge),areas(nt+2*nedge)) !we give our arrays space for oversampling
   do i = 1,n
     fu(i)=0
-    src_val(i)=0
+    src_val(i)=0 !initialise arrays to 0
   end do
 
   q = 1
   k = 1
-  do i = 1,nt !loop through triangles to add entries into the vals vector, and build the f vector
-    do j =1,3 !we build the array with x1,y1,x2,y2,...
+  do i = 1,nt !loop through triangles to add entries into the vals vector, and build the f vector.
+    do j =1,3 !use the same trick as in weirdder to compute the dot product of the basis functions
       a(j,1) = (p(t(i,j),1))
       a(j,2) = (p(t(i,j),2))
       a(j,3) = 1.0
     end do
 
     det = abs(threedet(a)) !this computes the determinant of that matrix, which is used to compute the area of the triangle in question
-    call threeinv(a)
+    call threeinv(a) !invert the array
 
-    if(order==1)then
+    if(order==1)then !Order=1 is the initial solve, which is done by iteration, so the stiffness matrix needs not be modified
     do j=0,8
       val1(q+j) = (-1)*(a(1,j/3+1)*a(1,modulo(j,3)+1)+a(2,j/3+1)*a(2,modulo(j,3)+1))*det*0.5
     end do
-    elseif(order==2)then
+    elseif(order==2)then !order=2 is the first derivative solve. This is done directly, so we must modify the stiffness matrix
     do j=0,8
-      val1(q+j) = (-1)*(a(1,j/3+1)*a(1,modulo(j,3)+1)+a(2,j/3+1)*a(2,modulo(j,3)+1))*det*0.5
+      val1(q+j) = (-1)*(a(1,j/3+1)*a(1,modulo(j,3)+1)+a(2,j/3+1)*a(2,modulo(j,3)+1))*det*0.5 !initial matrix
       val1(q+j) = val1(q+j) + (-1)*1./9*stiff(p(t(i,1),1)+p(t(i,2),1)+&
-        p(t(i,3),1),p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))*det*0.5 !Not sure if this is the right expression to fill the matrix...
+        p(t(i,3),1),p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))*det*0.5 !Modified piece
     end do
     endif
     q = q+9
     
-    cx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0)
+    cx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !centroid position
     cy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
-    cgs = (guess(t(i,1))+guess(t(i,2))+guess(t(i,3)))/3
+    cgs = (guess(t(i,1))+guess(t(i,2))+guess(t(i,3)))/3 !value of our guess, or the previous solution, @ the centroid
     if (order==1)then 
-      temp = gsrhs(cgs,cx,cy) !2d midpoint rule
+      temp = gsrhs(cgs,cx,cy) !Evaluate right hand side at the centroid
     elseif(order==2)then
-      temp = gsrhsx(cgs,cx,cy) !2d midpoint rule
+      temp = gsrhsx(cgs,cx,cy)
     endif
     fu(t(i,1)) = fu(t(i,1)) + det*0.5*temp/3.0 !here, we add the result of the convolution of the basis function with the right hand side of the poisson equation, which gives us the right hand side vector in the finite element equation.
     fu(t(i,2)) = fu(t(i,2)) + det*0.5*temp/3.0
     fu(t(i,3)) = fu(t(i,3)) + det*0.5*temp/3.0
   
-    if(edgetri(i))then
+    if(edgetri(i))then !this is where we oversample. We generate three triangles per triangle, and midpoint rule each of them.
       centroid(1) = cx 
       centroid(2) = cy
-      pt1(1) = (p(t(i,1),1)+p(t(i,2),1)+centroid(1))/3
+      pt1(1) = (p(t(i,1),1)+p(t(i,2),1)+centroid(1))/3 !pt1 is the centroid of the first sub-triangle, pt2 etc.
       pt1(2) = (p(t(i,1),2)+p(t(i,2),2)+centroid(2))/3
       pt2(1) = (p(t(i,2),1)+p(t(i,3),1)+centroid(1))/3
       pt2(2) = (p(t(i,2),2)+p(t(i,3),2)+centroid(2))/3
       pt3(1) = (p(t(i,1),1)+p(t(i,3),1)+centroid(1))/3
       pt3(2) = (p(t(i,1),2)+p(t(i,3),2)+centroid(2))/3
       
-      src_loc(1,k) = pt1(1)
+      src_loc(1,k) = pt1(1) !location of the triangle is its centroid
       src_loc(2,k) = pt1(2)
-      if(order==1)then
-          src_val(k) = gsrhs((cgs + guess(t(i,1)) + guess(t(i,2)))/3,pt1(1),pt1(2))*det*0.5/3
+      if(order==1)then 
+          src_val(k) = gsrhs((cgs + guess(t(i,1)) + guess(t(i,2)))/3,pt1(1),pt1(2))*det*0.5/3 !midpoint rule the RHS at the centroid
       elseif(order==2)then
           src_val(k) = gsrhsx((cgs + guess(t(i,1)) + guess(t(i,2)))/3,pt1(1),pt1(2))*det*0.5/3
       endif
-      areas(k) = det*0.5/3
+      areas(k) = det*0.5/3 !We also need the areas of the triangles, for error estimation. 
       src_loc(1,k+1) = pt2(1)
       src_loc(2,k+1) = pt2(2)
       if(order==1)then
@@ -259,7 +267,7 @@ module mesh
       endif
       areas(k+2) = det*0.5/3
       k = k+3    
-    else
+    else !If the triangle is not on the edge, we do the normal thing. No need to oversample.
       src_loc(1,k) = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0)
       src_loc(2,k) = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
       src_val(k) = temp*det*0.5
@@ -322,9 +330,9 @@ module mesh
   do i = 1,n !we want x to have an estimate of the solution to begin with... i start with 0, for lack of a better idea
     x(i) = 0
   end do
-  temp = 1e-14
+  temp = 1e-16
   i = nb/4
-  q = i
+  q = i*4
   call mgmres_st(n,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
   end subroutine gssolve
  
@@ -341,7 +349,7 @@ module mesh
     end do
   end function linspace
 
-  function  linspace2(a,b,n) !equivalent of python linspace
+  function  linspace2(a,b,n) !equivalent of python linspace, except it doesn't include the endpoint
     use functions
   implicit none
     real *8, intent(in):: a,b !start and endpoint

@@ -1,12 +1,15 @@
 module curvestuff
 contains
-
         
-subroutine gssolve_wrapper(p,t,b,srcloc,answer,srcval,areas,bound,order,sol)
+subroutine gssolve_wrapper(p,t,b,srcloc,answer,srcval,areas,bound,order,sol) !As the name suggests, this is a wrapper for the
+!        Grad-Shafranov solver routine, to be used in the context of Gradyoupee (that function needs the outputs srcloc, srcval
+!        This solves an equation of the form \Delta u(x,y) = F(x,y,u), either through iteration (order=1) or through a direct solve
+!        assuming that F(x,y,u) = g(x,y)*u + h(x,y)
   use mesh
   use functions
   implicit none
-  real *8,parameter::small = 1e-14
+  real *8,parameter::small = 1e-14 !When we use fixed point iteration (only for the initial solution), we want it to be to this
+!  accuracy
   real *8::error
   integer:: order,nt,i,n
   real *8, dimension(:),allocatable::guess,answer
@@ -20,36 +23,41 @@ subroutine gssolve_wrapper(p,t,b,srcloc,answer,srcval,areas,bound,order,sol)
   
   n = size(p(:,1))
   allocate(guess(n),answer(n))
-  error = 1000
-  if(order==1)then
+  error = 1000 !we set the error to be big so our while loop will start properly
+  if(order==1)then !order=1 is the case for the initial solve, where we have to use iteration
     do i=1,n
-      guess(i) = 1
+      guess(i) = 1 !we set our initial guess for u to be coarse.
     enddo
     do while(error>small)
       if(allocated(srcloc).eqv..true.) then
-        deallocate(srcloc,srcval,areas,x)
+        deallocate(srcloc,srcval,areas,x) !The gssolve routine takes these as unallocated arrays, so we need to deallocate them
+        !every time
       endif
     
-      call gssolve(p,t,b,srcloc,x,srcval,areas,bound,order,guess)
+      call gssolve(p,t,b,srcloc,x,srcval,areas,bound,order,guess) !Solves given the guess, and the boundary "bound".
     
-      error=0
+      error=0 !Initialise the error
       do i=1,n
-        error = error + (x(i)-guess(i))**2
+        error = error + (x(i)-guess(i))**2 !compute the L-2 norm of the difference between the functions
         guess(i) = x(i)
       enddo
       error = sqrt(error)
+      write(*,*) "Error = ",error
     enddo
-  elseif(order==2)then
+  elseif(order==2)then !Order=2 is when we are solving the first derivatives. In this case we can do a direct solve, as we already
+!          have the solution from before (sol). We input this in the guess array, but it's not a guess. It's the actual solution
+!          from a previous solve.
     do i=1,n
       guess(i) = sol(i)
     enddo
-    call gssolve(p,t,b,srcloc,x,srcval,areas,bound,order,guess)
+    call gssolve(p,t,b,srcloc,x,srcval,areas,bound,order,guess) !Call the solver
   endif
 
-  answer = x
+  answer = x !Spit out the answer
 endsubroutine gssolve_wrapper
 
-subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
+subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) !Master subroutine. Computes G-S solution, and its
+!       derivatives.
   use mesh
   use functions
   implicit none
@@ -66,16 +74,24 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   integer::i,j,k,n,m,bsize,ssize
   complex *16,dimension(:),allocatable::cxarr
 
+  write(*,*) "Starting solve"
+
   call distmesh(p,t,b,eps,del,kap) !we import the arrays describing the finite element decomposition of the tokamak
-  call switchpars(eps,del,kap,d1,d2,d3)
+  call switchpars(eps,del,kap,d1,d2,d3)!switch to convenient parameters
   args = (/d1,d2,d3,0.7d0,1.0d0*1e-14,1.0d0,0.0d0/)!arguments for findr
+  
+  write(*,*) "Generating boundary FFT"
+
   call fftgen(10000,args,tran)!generate the fft array
   bsize = size(b)
-  n = 3*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
-  pi = 4.0d0*atan(1.0d0)
+  n = 3*size(b) !we want 3x oversampling in our boundary
+  pi = 4.0d0*atan(1.0d0) !FORTRAN needs us to tell is what pi is, even though it knows the arctan() function...
   allocate(gn(n,n))
   allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n))
   allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ubx(bsize),uby(bsize),uxt(n),ubxx(bsize),ubxy(bsize))
+  
+  write(*,*) "Generating boundary parametrisation"
+
   call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
 ! of angles which give equidistant points along the boundary
 
@@ -90,26 +106,33 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
     ddx(i) = dder(1) !same for second derivatives
     ddy(i) = dder(2)
   enddo
-  
-  call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for g_n
-  call derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,yin,dx,dy,ddx,ddy,gn,tran,ubx,uby,ds,l)
+
+  call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for the G matrix (described in the paper) 
+  call derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,yin,dx,dy,ddx,ddy,gn,tran,ubx,uby,ds,l) !Master
+!  first-derivative subroutine. Spits out the initial solution and the first derivatives
   
   ssize = size(sol)
   allocate(solyy(ssize))
   !Solve for solxx,solxy
   do i =1,n
-    cxarr(i) = cmplx(ux(i),0.0D00,kind=16)
+    cxarr(i) = cmplx(ux(i),0.0D00,kind=16) !We need to store arrays inside complex arrays for the spectral derivative code to take
+!    them in properly
   enddo
 
-  call specder(0.00d0,l,n,cxarr,uxt)
-  call gradyoupee(upx,upy,d1,d2,d3,p,t,b,tarc,n,x,infi,findif,tran,areas,ubx,2,sol)
-  call modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt)
+  call specder(0.00d0,l,n,cxarr,uxt) !Take spectral derivative of the x derivative boundary to get the tangential component of
+!  second derivative boundary
+
+  write(*,*) "Solving with first derivative boundary..." 
+
+  call gradyoupee(upx,upy,d1,d2,d3,p,t,b,tarc,n,x,infi,findif,tran,areas,ubx,2,sol) !Get gradient of u^p
+  call modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt)!Modified version of the code which solves the integral equation for U^h,
+!  which takes in the tangential derivative on the boundary, since that modifies the answer. 
 
   do i =1,n
     cxarr(i) = cmplx(uh(i),0.0D00,kind=16)
   enddo
 
-  call specder(0.0d0,l,n,cxarr,uhn) !spectral derivative of u^h gives us u^h_t, which is equal to u^h_n
+  call specder(0.0d0,l,n,cxarr,uhn) !spectral derivative of U^h gives us U^h_t, which is equal to u^h_n
 
   do i = 1,n
     nhat = (/(-1.0d0)*dy(i)/sqrt(dx(i)**2+dy(i)**2),dx(i)/sqrt(dx(i)**2+dy(i)**2)/)
@@ -132,14 +155,13 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
     ubxy(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
   enddo
  
-
-  write(*,*) ('taking derivatives...')
-  call weirdder(solxx,p,t,b,ubxx,2,sol,solx)
-  call weirdder(solxy,p,t,b,ubxy,3,sol,soly)
+  write(*,*) ('Taking second derivatives...')
+  call weirdder(solxx,p,t,b,ubxx,2,sol,solx)!Direct-solve for the derivatives
+  call weirdder(solxy,p,t,b,ubxy,3,sol,soly)!
 
   !solve solyy
   do i=1,ssize
-    solyy(i) = foo(p(i,1),p(i,2),d1,d2,d3) - solxx(i)
+    solyy(i) = gsrhs(sol(i),p(i,1),p(i,2)) - solxx(i) !we already know the answer for the yy derivative
   enddo
 endsubroutine dderpois
 
@@ -172,6 +194,8 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,
     bound(i) = 0.0d0
   enddo
 
+  write(*,*) "Initial solve. Iterating...."
+
   call gradyoupee(upx,upy,d1,d2,d3,p,t,b,tarc,n,sol,infi,findif,tran,areas,bound,1) !we have the gradient of u^p. 
   call solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) ! solves for u^h  
   do i =1,n
@@ -202,7 +226,7 @@ subroutine derpois(d1,d2,d3,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,
     uby(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
   enddo
 
-  write(*,*) ('taking derivatives...')
+  write(*,*) ('Taking first derivatives...')
   
   call weirdder(solx,p,t,b,ubx,0,sol)
   call weirdder(soly,p,t,b,uby,1,sol)
@@ -292,7 +316,8 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
   enddo
 endsubroutine solveyouh
 
-subroutine getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !xin,yin should come from the arcparam subroutine, n is their length
+subroutine getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n)! This is a purely geometric definition for the G matrix. It is all described in the
+!        paper 
     implicit none
     integer::n,i,j,k
     real *8, dimension(n,2)::xp
@@ -351,7 +376,6 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,p,t,b,tarc,m,x,infi,findif,tran,areas,bou
     real *8, dimension(:), allocatable::srcval,psol,x,y,r,upx,upy,areas
     complex *16, dimension(:), allocatable::pot
     real *8:: d1,d2,d3,pi,l,infi,findif
-    real *8,dimension(7)::args
     real *8,dimension(2)::der
     real *8, dimension(:,:)::p
     integer, dimension(:,:)::t
@@ -359,25 +383,24 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,p,t,b,tarc,m,x,infi,findif,tran,areas,bou
 
     pi = 4.0d0*atan(1.0d0)
     
-    if(order==1)then
-      call gssolve_wrapper(p,t,b,srcloc,x,srcval,areas,bound,order)
-    elseif(order==2)then
+    if(order==1)then !order = 1 is the initial solve
+      call gssolve_wrapper(p,t,b,srcloc,x,srcval,areas,bound,order) !Solve the Grad Shafranov equation 
+    elseif(order==2)then ! order = 2 is the solution for first derivatives
       call gssolve_wrapper(p,t,b,srcloc,x,srcval,areas,bound,order,sol)
     endif
     n = size(srcval)
     allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
 
-    args = (/d1,d2,d3,0.7d0,infi,1.0d0,0.0d0/)
     do i = 1,m
       r(i) = findr_fft(tarc(i),tran)
-      targloc(1,i) = 1.0d0 + r(i)*cos(tarc(i))
+      targloc(1,i) = 1.0d0 + r(i)*cos(tarc(i))!targloc is the array of points where we want our integrated grad u^p
       targloc(2,i) = r(i)*sin(tarc(i))
       der = dxdy(tarc(i),d1,d2,d3,findif,infi,tran)
-      targnorm(1,i) = der(2)/sqrt(der(1)**2+der(2)**2)
+      targnorm(1,i) = der(2)/sqrt(der(1)**2+der(2)**2) !the array of normal vectors at those points
       targnorm(2,i) = (-1.0d0)*der(1)/sqrt(der(1)**2+der(2)**2)
     enddo  
 
-    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,3,-1,pot)
+    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,3,-1,pot) !Call the fmm-qbx integrator
 
   do i = 1,m
     upx(i) = (-1.0d0)*real(pot(i)) 
