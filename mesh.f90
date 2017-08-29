@@ -3,7 +3,7 @@ module mesh
   implicit none
   contains
   
-  subroutine weirdder (x,p,t,b,u,xory,uat,uxat) !Solves grad-shafranov with no oversampling, and given a boundary u. Also given
+  subroutine weirdder (c,x,p,t,b,u,xory,uat,uxat) !Solves grad-shafranov with no oversampling, and given a boundary u. Also given
 !          solutions uat (solution to first equation), and uxat (can contain first derivative in x or y)
   use functions
   implicit none
@@ -17,7 +17,7 @@ module mesh
   real *8, dimension(:),allocatable::fu,val1,val2,arr,x,err 
   real *8, dimension(3,3)::a
   real *8::det,temp
-  real *8::cx,cy
+  real *8::cx,cy,c
   real *8,dimension(:)::u,uat
 
   nt = size(t(:,1))
@@ -50,7 +50,7 @@ module mesh
     do j=0,8
       val1(q+j) = (-1)*(a(1,j/3+1)*a(1,modulo(j,3)+1)+a(2,j/3+1)*a(2,modulo(j,3)+1))*det*0.5 !This somehow just gives the answer...
       val1(q+j) = val1(q+j) + (-1)*1./9*stiff((p(t(i,1),1)+p(t(i,2),1)+&
-        p(t(i,3),1))/3,(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/3)*det*0.5 !And this gives us the correction to the stiffness matrix,
+        p(t(i,3),1))/3,(p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/3,c)*det*0.5 !And this gives us the correction to the stiffness matrix,
 !which we evaluate with a coarse midpoint rule. 
 !for the "weird poisson equation"
     end do
@@ -58,13 +58,13 @@ module mesh
     cx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !coordinates of the centroid of the triangle in question
     cy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
     if(xory==0)then !xory can take four values, each of which corresponds to a different derivative. 
-      temp = gsrhsx((uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy) !2d midpoint rule for the right hand side. 
+      temp = gsrhsx((uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy,c) !2d midpoint rule for the right hand side. 
     elseif(xory==1)then
-      temp = gsrhsy((uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy)
+      temp = gsrhsy((uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy,c)
     elseif(xory==2)then
-      temp = gsrhsxx((uxat(t(i,1))+uxat(t(i,2)) + uxat(t(i,3)))/3,(uat(t(i,1))+uat(t(i,2))+uat(t(i,3)))/3,cx,cy)
+      temp = gsrhsxx((uat(t(i,1))+uat(t(i,2)) + uat(t(i,3)))/3,(uxat(t(i,1))+uxat(t(i,2))+uxat(t(i,3)))/3,cx,cy,c)
     elseif(xory==3)then
-      temp = gsrhsxy((uat(t(i,1))+uat(t(i,2)) + uat(t(i,3)))/3,(uxat(t(i,1))+uxat(t(i,2))+uxat(t(i,3)))/3,cx,cy)!uxat seems like it
+      temp = gsrhsxy((uat(t(i,1))+uat(t(i,2)) + uat(t(i,3)))/3,(uxat(t(i,1))+uxat(t(i,2))+uxat(t(i,3)))/3,cx,cy,c)!uxat seems like it
       !      contains an x-derivative of the function, but in this case we are feeding in a y-derivative. I didn't want to declare
       !      two redundant arrays.
     else
@@ -138,7 +138,7 @@ module mesh
   call mgmres_st(n,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
   endsubroutine weirdder
 
-  subroutine gssolve(p,t,b,src_loc,x,src_val,areas,bound,order,guess) !Different G-S solver, which oversamples 3x the boundary
+  subroutine gssolve(c,p,t,b,src_loc,x,src_val,areas,bound,order,guess) !Different G-S solver, which oversamples 3x the boundary
              !triangles, and spits out a srcloc array (centroids of triangles), and srcval (right hand side at those points)
   use functions
   implicit none
@@ -153,7 +153,7 @@ module mesh
   real *8, dimension(:),allocatable::fu,val1,val2,arr,src_val,x,areas
   real *8, dimension(:)::bound,guess
   real *8, dimension(3,3)::a
-  real *8::cgs,cx,cy,det,temp
+  real *8::cgs,cx,cy,det,temp,c
   real *8, dimension(2)::centroid, pt1,pt2,pt3
   logical, dimension(:),allocatable::edgetri
   
@@ -215,7 +215,7 @@ module mesh
     do j=0,8
       val1(q+j) = (-1)*(a(1,j/3+1)*a(1,modulo(j,3)+1)+a(2,j/3+1)*a(2,modulo(j,3)+1))*det*0.5 !initial matrix
       val1(q+j) = val1(q+j) + (-1)*1./9*stiff(p(t(i,1),1)+p(t(i,2),1)+&
-        p(t(i,3),1),p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))*det*0.5 !Modified piece
+        p(t(i,3),1),p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2),c)*det*0.5 !Modified piece
     end do
     endif
     q = q+9
@@ -224,9 +224,9 @@ module mesh
     cy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
     cgs = (guess(t(i,1))+guess(t(i,2))+guess(t(i,3)))/3 !value of our guess, or the previous solution, @ the centroid
     if (order==1)then 
-      temp = gsrhs(cgs,cx,cy) !Evaluate right hand side at the centroid
+      temp = gsrhs(cgs,cx,cy,c) !Evaluate right hand side at the centroid
     elseif(order==2)then
-      temp = gsrhsx(cgs,cx,cy)
+      temp = gsrhsx(cgs,cx,cy,c)
     endif
     fu(t(i,1)) = fu(t(i,1)) + det*0.5*temp/3.0 !here, we add the result of the convolution of the basis function with the right hand side of the poisson equation, which gives us the right hand side vector in the finite element equation.
     fu(t(i,2)) = fu(t(i,2)) + det*0.5*temp/3.0
@@ -245,25 +245,25 @@ module mesh
       src_loc(1,k) = pt1(1) !location of the triangle is its centroid
       src_loc(2,k) = pt1(2)
       if(order==1)then 
-          src_val(k) = gsrhs((cgs + guess(t(i,1)) + guess(t(i,2)))/3,pt1(1),pt1(2))*det*0.5/3 !midpoint rule the RHS at the centroid
+          src_val(k) = gsrhs((cgs + guess(t(i,1)) + guess(t(i,2)))/3,pt1(1),pt1(2),c)*det*0.5/3 !midpoint rule the RHS at the centroid
       elseif(order==2)then
-          src_val(k) = gsrhsx((cgs + guess(t(i,1)) + guess(t(i,2)))/3,pt1(1),pt1(2))*det*0.5/3
+          src_val(k) = gsrhsx((cgs + guess(t(i,1)) + guess(t(i,2)))/3,pt1(1),pt1(2),c)*det*0.5/3
       endif
       areas(k) = det*0.5/3 !We also need the areas of the triangles, for error estimation. 
       src_loc(1,k+1) = pt2(1)
       src_loc(2,k+1) = pt2(2)
       if(order==1)then
-          src_val(k+1) = gsrhs((cgs + guess(t(i,2)) + guess(t(i,3)))/3,pt2(1),pt2(2))*det*0.5/3
+          src_val(k+1) = gsrhs((cgs + guess(t(i,2)) + guess(t(i,3)))/3,pt2(1),pt2(2),c)*det*0.5/3
       elseif(order==2)then
-          src_val(k+1) = gsrhsx((cgs + guess(t(i,2)) + guess(t(i,3)))/3,pt2(1),pt2(2))*det*0.5/3
+          src_val(k+1) = gsrhsx((cgs + guess(t(i,2)) + guess(t(i,3)))/3,pt2(1),pt2(2),c)*det*0.5/3
       endif
       areas(k+1) = det*0.5/3
       src_loc(1,k+2) = pt3(1)
       src_loc(2,k+2) = pt3(2)
       if(order==1)then
-          src_val(k+2) = gsrhs((cgs + guess(t(i,1)) + guess(t(i,3)))/3,pt3(1),pt3(2))*det*0.5/3
+          src_val(k+2) = gsrhs((cgs + guess(t(i,1)) + guess(t(i,3)))/3,pt3(1),pt3(2),c)*det*0.5/3
       elseif(order==2)then
-          src_val(k+2) = gsrhsx((cgs + guess(t(i,1)) + guess(t(i,3)))/3,pt3(1),pt3(2))*det*0.5/3
+          src_val(k+2) = gsrhsx((cgs + guess(t(i,1)) + guess(t(i,3)))/3,pt3(1),pt3(2),c)*det*0.5/3
       endif
       areas(k+2) = det*0.5/3
       k = k+3    
@@ -400,7 +400,7 @@ module mesh
     m = m*(1/det)
   end subroutine threeinv
   
-  subroutine distmesh(p,t,b,eps,del,kap)
+  subroutine distmesh(p,t,b,eps,del,kap,c)
   use functions
   implicit none
   integer *8, parameter :: maxrecs = 1000000
@@ -411,10 +411,10 @@ module mesh
   real *8,dimension(:,:),allocatable::p
   real *8,dimension(3)::temp
   integer,dimension(:),allocatable::b
-  real *8::eps,del,kap
+  real *8::eps,del,kap,c
   nr = 0
   open(unit=1,file='infiles/params.txt')
-  read(1,*) eps, del, kap
+  read(1,*) eps, del, kap, c
   close(1)
 
     open(unit=1,file='infiles/p.txt')
