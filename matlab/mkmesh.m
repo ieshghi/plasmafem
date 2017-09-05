@@ -1,4 +1,4 @@
-function [] = fuck(size)
+function [] = mkmesh(size)
     a = importdata('bdry.txt');
     fd = @(p) dpoly(p,a');
 

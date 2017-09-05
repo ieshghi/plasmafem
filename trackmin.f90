@@ -51,10 +51,7 @@ function newton2d(infi,fx,fy,fxx,fyy,fxy,p,t,areas)
     jac(1,2) = interp2d(p,t,fxy,xguess,yguess,areas)
     jac(2,1) = interp2d(p,t,fxy,xguess,yguess,areas)
 
-    write(*,*) jac
-
     call inv2(jac) 
-    write(*,*) jac
     !invert jacobian (write explicit 2x2 invertor)
 
     xnew = xguess - jac(1,1)*interp2d(p,t,fx,xguess, yguess,areas) - jac(1,2)*interp2d(p,t,fy,xguess,yguess,areas)
@@ -62,7 +59,7 @@ function newton2d(infi,fx,fy,fxx,fyy,fxy,p,t,areas)
     !calculate new xguess_n+1 = xguess_n - inv(jac)*[fx(xguess,yguess) , fy (xguess,yguess)]^T
 
     error = sqrt((xnew-xguess)**2+(ynew-yguess)**2)
-    write(*,*) 'Newton error = ',error
+    write(*,*) 'Newton error = ',abs(xguess-xnew)
     xguess = xnew
     yguess = ynew
   enddo  

@@ -1,4 +1,4 @@
-function [] = makebdry(eps,del,kap)
+function [] = makebdry(eps,del,kap,c)
 	N = 10000;
 	theta = linspace(0,2*pi,10000);
 	q = zeros(1,N);
@@ -13,7 +13,6 @@ function [] = makebdry(eps,del,kap)
 		y = q.*sin(theta);
 	else
 		d = parswitch(eps,del,kap);
-		c=1;
 		tuk = @(x) tok(x,c,d(1),d(2),d(3)); %tokamak
 		for i=1:N
 			q(i)=find_r(tuk,theta(i),0.7,1e-10,[1,0]); %tokamak
@@ -24,5 +23,5 @@ function [] = makebdry(eps,del,kap)
 	
 	
 	save bdry.txt x y -ASCII
-	save ../infiles/params.txt eps del kap -ASCII
+	save ../infiles/params.txt eps del kap c -ASCII
 end
