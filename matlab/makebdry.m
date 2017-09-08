@@ -12,7 +12,7 @@ function [] = makebdry(eps,del,kap,c)
 		x = q.*cos(theta);
 		y = q.*sin(theta);
 	else
-		d = parswitch(eps,del,kap);
+		d = parswitch(eps,del,kap,c);
 		tuk = @(x) tok(x,c,d(1),d(2),d(3)); %tokamak
 		for i=1:N
 			q(i)=find_r(tuk,theta(i),0.7,1e-10,[1,0]); %tokamak

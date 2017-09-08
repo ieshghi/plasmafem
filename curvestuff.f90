@@ -77,7 +77,7 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) !Mast
   write(*,*) "Starting solve"
 
   call distmesh(p,t,b,eps,del,kap,c) !we import the arrays describing the finite element decomposition of the tokamak
-  call switchpars(eps,del,kap,d1,d2,d3)!switch to convenient parameters
+  call switchpars(eps,del,kap,c,d1,d2,d3)!switch to convenient parameters
   args = (/d1,d2,d3,0.7d0,1.0d0*1e-14,1.0d0,0.0d0,c/)!arguments for findr
   
   write(*,*) "Generating boundary FFT"
@@ -740,14 +740,14 @@ function tokam(x,y,c,d1,d2,d3) !tokamak function
   tokam = c/8.0d0*x**4 + d2*x**2 + d3*(x**4-4.0d0*x**2*y**2)+d1
 end function tokam
 
-subroutine switchpars(ep,de,kap,d1,d2,d3) !switches from eps,del,kap to d1,d2,d3
+subroutine switchpars(ep,de,kap,c,d1,d2,d3) !switches from eps,del,kap to d1,d2,d3
   implicit none
   integer::info
-  real *8::ep,de,kap,d1,d2,d3,const,one
+  real *8::ep,de,kap,d1,d2,d3,const,one,c
   real *8,dimension(3,3)::a,at
   real *8,dimension(3)::b,pvt
   one = 1.0d0
-  const = (-1.0d0)*(1.0d0/8.0d0)
+  const = (-1.0d0)*(c/8.0d0)
 
   a=reshape((/one,(1.0d0+ep)**2,(1.0d0+ep)**4,one,(1.0d0-ep)**2,(1.0d0-ep)**4,one&
   ,(1.0d0-de*ep)**2,(1.0d0-de*ep)**4-4.0d0*(1.0d0-de*ep)**2*kap**2.0d0*ep**2/),shape(a))

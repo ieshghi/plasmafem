@@ -16,7 +16,7 @@ program trackmin
   !ask Antoine
   findif = 1.0d0*1e-3
   call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) ! calculate first and second derivatives
-  call switchpars(eps,del,kap,d1,d2,d3)
+  call switchpars(eps,del,kap,c,d1,d2,d3)
   extr = newton2d(halinfi,solx,soly,solxx,solyy,solxy,p,t,areas) !2d rootfinding method, returns location of the minimum
   ! (minx,miny)
   write(*,*) 'Result : x = ',extr(1),', y = ',extr(2)
