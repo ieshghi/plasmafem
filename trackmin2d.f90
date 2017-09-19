@@ -2,7 +2,7 @@ program trackmin
   use mesh
   use curvestuff
   implicit none
-  real *8:: eps,del,kap,infi,findif,d1,d2,d3,c,halinfi
+  real *8:: eps,del,kap,infi,findif,d1,d2,d3,c,halinfi,femerror
   real *8,dimension(2)::extr
   real *8, dimension(:),allocatable::solx,soly,sol,areas,solxx,solxy,solyy
   real *8, dimension(:,:),allocatable::p,ps

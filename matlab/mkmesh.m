@@ -1,5 +1,6 @@
 function [] = mkmesh(size)
     a = importdata('bdry.txt');
+    params = importdata('../infiles/params.txt');
     fd = @(p) dpoly(p,a');
 
     pfix=[0,-1;2,-1;2,1;0,1];
@@ -26,10 +27,12 @@ function [] = mkmesh(size)
     sp = strcat(s1,n,'/p.txt');
     st = strcat(s1,n,'/t.txt');
     sh = strcat(s1,n,'/h.txt');
+    sr = strcat(s1,n,'/params.txt');
 
     save(sb,'b','-ascii');
     save(sp,'p','-ascii');
     save(st,'t','-ascii');
     save(sh,'size','-ascii');
+    save(sr,'params','-ascii');
 end
 

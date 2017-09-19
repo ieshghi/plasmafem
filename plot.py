@@ -103,7 +103,24 @@ def plottest(choice):
       plt.scatter(x,y)
       plt.show()
 
+def trackconv():
+  fig = plt.figure()
+  conv = np.loadtxt('track.dat')
+  fem = abs(conv[:,0])
+  error = abs(conv[:,1])
+  edge = conv[:,2]
+  ax = fig.add_subplot(111)
+  
+  ax.plot((-1)*np.log10(edge),np.log10(error),label='Minimum track')
+  ax.plot((-1)*np.log10(edge),np.log10(fem),label='Finite elements')
+  ax.plot((-1)*np.log10(edge),(-2)*np.log10(edge[0])-(-2)*np.log10(edge)+np.log10(fem[0]),label='Second order')
 
+  ax.set_title('Newton convergence')
+      
+  ax.set_xlabel('-log10(h)')
+  ax.set_ylabel('log10(Error)')
+  ax.legend()
+  ax.plot()
 
 def conver(slope=-2,der=0,offset=0):
   fig = plt.figure()

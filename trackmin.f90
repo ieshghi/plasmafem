@@ -2,7 +2,7 @@ program trackmin
   use mesh
   use curvestuff
   implicit none
-  real *8:: eps,del,kap,infi,findif,d1,d2,d3,c,halinfi
+  real *8:: eps,del,kap,infi,findif,d1,d2,d3,c,halinfi,femerror,edge
   real *8::extr
   real *8, dimension(:),allocatable::solx,soly,sol,areas,solxx,solxy,solyy
   real *8, dimension(:,:),allocatable::p,ps
@@ -16,12 +16,25 @@ program trackmin
   findif = 1.0d0*1e-3
   call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) ! calculate first and second derivatives
   call switchpars(eps,del,kap,c,d1,d2,d3)
+  
+  femerror = 0
+  do i=1,size(solxx)
+    femerror = femerror +&
+(solxx(i)-exactxx(p(i,1),p(i,2),c,d1,d2,d3))**2/size(solxx)
+  enddo
+  write(*,*) 'FEM error = ',sqrt(femerror)
+
   extr = newton(halinfi,solx,solxx,p,t) !2d rootfinding method, returns location of the minimum
   ! (minx,miny)
   write(*,*) 'Result : x = ',extr,', y = ',0
   write(*,*) 'Expected : x = ',sqrt(-2.0d0*d2/(c/2.0d0 + 4.0d0*d3)),', y = ',0
+
+  open(2,file='infiles/h.txt')
+    read(2,*) edge
+  close(2)
+
   open(1,file='track.dat',position='append')
-    write(1,*) extr,c
+    write(1,*) femerror,extr-sqrt(-2.0d0*d2/(c/2.0d0+4.0d0*d3)),edge
   close(1)
 contains
 
