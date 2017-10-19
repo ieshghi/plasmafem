@@ -19,8 +19,11 @@ program trackmin
   
   femerror = 0
   do i=1,size(solxx)
+    solxx(i) = exactxx(p(i,1),p(i,2),c,d1,d2,d3)
+    solx(i) = exactx(p(i,1),p(i,2),c,d1,d2,d3)
+
     femerror = femerror +&
-(solxx(i)-exactxx(p(i,1),p(i,2),c,d1,d2,d3))**2/size(solxx)
+areas(i)*(solxx(i)-exactxx(p(i,1),p(i,2),c,d1,d2,d3))**2/size(solxx)
   enddo
   write(*,*) 'FEM error = ',sqrt(femerror)
 
@@ -34,7 +37,7 @@ program trackmin
   close(2)
 
   open(1,file='track.dat',position='append')
-    write(1,*) femerror,extr-sqrt(-2.0d0*d2/(c/2.0d0+4.0d0*d3)),edge
+    write(1,*) femerror,abs(extr-sqrt(-2.0d0*d2/(c/2.0d0+4.0d0*d3))),edge
   close(1)
 contains
 
@@ -49,9 +52,9 @@ function newton(infi,fx,fxx,p,t)
 
   minpos = minloc(abs(fx),dim=1)
   xguess = p(minpos,1)
-
+  error = 100
   do while(error>infi)
-    xnew = xguess - interp(p,t,fx,xguess,0.0d0,infi)/interp(p,t,fxx,xguess,0.0d0,infi)
+    xnew = xguess - exactx(xguess,0.0d0,c,d1,d2,d3)/exactxx(xguess,0.0d0,c,d1,d2,d3)!interp(p,t,fx,xguess,0.0d0,infi)/interp(p,t,fxx,xguess,0.0d0,infi)
 
     error = abs(xnew-xguess)
     write(*,*) xguess

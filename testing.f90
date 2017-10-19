@@ -2,7 +2,7 @@ program testing
   use mesh
   use curvestuff
   implicit none
-  real *8:: ep,del,kap,infi,findif,d1,d2,d3,stdev,edge
+  real *8:: ep,del,kap,infi,findif,c,d1,d2,d3,stdev,edge
   real *8, dimension(:),allocatable::solx,soly,sol,ubx,uby,ex,ey,exa,exx,eyy,exy,ratx,&
           raty,diffx,diffy,exbx,exby,areas,areas2,solxx,solxy,solyy,solx2,soly2,sol2
   real *8, dimension(:,:),allocatable::p,p2
@@ -13,9 +13,10 @@ program testing
   ep = 0.32d0
   del = 0.33d0
   kap = 1.7d0
+  c = 1.0d0
   infi = 1.0d0*1e-14
   findif = 1.0d0*1e-3
-  call switchpars(ep,del,kap,d1,d2,d3)
+  call switchpars(ep,del,kap,c,d1,d2,d3)
   call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
   n = size(sol)
   nb = size(b)
@@ -24,12 +25,12 @@ program testing
   allocate(ex(n),ey(n),exa(n),exx(n),eyy(n),exy(n),diffx(n),ratx(n),diffy(n),raty(n),exbx(nb),exby(nb)) !store exact solutions, for comparison
 
   do i=1,n
-    exa(i) = exact(p(i,1),p(i,2),d1,d2,d3)
-    ex(i) = exactx(p(i,1),p(i,2),d1,d2,d3)
-    ey(i) = exacty(p(i,1),p(i,2),d1,d2,d3)
-    exx(i) = exactxx(p(i,1),p(i,2),d1,d2,d3)
-    exy(i) = exactxy(p(i,1),p(i,2),d1,d2,d3)
-    eyy(i) = exactyy(p(i,1),p(i,2),d1,d2,d3)
+    exa(i) = exact(p(i,1),p(i,2),c,d1,d2,d3)
+    ex(i) = exactx(p(i,1),p(i,2),c,d1,d2,d3)
+    ey(i) = exacty(p(i,1),p(i,2),c,d1,d2,d3)
+    exx(i) = exactxx(p(i,1),p(i,2),c,d1,d2,d3)
+    exy(i) = exactxy(p(i,1),p(i,2),c,d1,d2,d3)
+    eyy(i) = exactyy(p(i,1),p(i,2),c,d1,d2,d3)
   enddo
   
   open(unit=1,file='infiles/h.txt')
