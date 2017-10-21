@@ -2,9 +2,10 @@ program trackmin
   use mesh
   use curvestuff
   implicit none
-  real *8:: eps,del,kap,infi,findif,d1,d2,d3,c,halinfi,femerror,edge
+  integer,parameter :: seed = 86456
+  real *8::eps,del,kap,infi,findif,d1,d2,d3,c,halinfi,femerror,edge,val,known1,known2
   real *8::extr
-  real *8, dimension(:),allocatable::solx,soly,sol,areas,solxx,solxy,solyy
+  real *8, dimension(:),allocatable::solx,soly,sol,areas,solxx,solxy,solyy,errs
   real *8, dimension(:,:),allocatable::p,ps
   integer,dimension(:),allocatable::b,bs
   integer,dimension(:,:),allocatable::t,ts
@@ -19,25 +20,32 @@ program trackmin
   
   femerror = 0
   do i=1,size(solxx)
-    solxx(i) = exactxx(p(i,1),p(i,2),c,d1,d2,d3)
-    solx(i) = exactx(p(i,1),p(i,2),c,d1,d2,d3)
-
     femerror = femerror +&
 areas(i)*(solxx(i)-exactxx(p(i,1),p(i,2),c,d1,d2,d3))**2/size(solxx)
   enddo
   write(*,*) 'FEM error = ',sqrt(femerror)
+ 
+  !call srand(seed)
+  !allocate(errs(10))
+  !do i=1,10
+  !  val = rand()*(maxval(p(:,1))-minval(p(:,1))) + minval(p(:,1))
+  !  errs(i) = (interp(p,t,solx,val,0.0d0,infi)-exactx(val,0.0d0,c,d1,d2,d3))**2/1000
+  !enddo
+  !val = sqrt(sum(errs))
+
+  known1 = sqrt(2.0d0/7)*sqrt((-6.0d0*d2+sqrt((14*c*d1+112*d1*d3+36*d2*d2)))/(c+8*d3))
+  known2 = sqrt(2.0d0/7)*sqrt((-6.0d0*d2-sqrt((14*c*d1+112*d1*d3+36*d2*d2)))/(c+8*d3))
 
   extr = newton(halinfi,solx,solxx,p,t) !2d rootfinding method, returns location of the minimum
-  ! (minx,miny)
-  write(*,*) 'Result : x = ',extr,', y = ',0
-  write(*,*) 'Expected : x = ',sqrt(-2.0d0*d2/(c/2.0d0 + 4.0d0*d3)),', y = ',0
-
+   !(minx,miny)
+  write(*,*) 'Result : x = ',extr
+  write(*,*) 'Expected : x = ',known1
   open(2,file='infiles/h.txt')
     read(2,*) edge
   close(2)
 
   open(1,file='track.dat',position='append')
-    write(1,*) femerror,abs(extr-sqrt(-2.0d0*d2/(c/2.0d0+4.0d0*d3))),edge
+    write(1,*) femerror,abs(known1-extr),edge
   close(1)
 contains
 
@@ -54,7 +62,7 @@ function newton(infi,fx,fxx,p,t)
   xguess = p(minpos,1)
   error = 100
   do while(error>infi)
-    xnew = xguess - exactx(xguess,0.0d0,c,d1,d2,d3)/exactxx(xguess,0.0d0,c,d1,d2,d3)!interp(p,t,fx,xguess,0.0d0,infi)/interp(p,t,fxx,xguess,0.0d0,infi)
+    xnew = xguess - interp(p,t,fx,xguess,0.0d0,infi)/interp(p,t,fxx,xguess,0.0d0,infi)
 
     error = abs(xnew-xguess)
     write(*,*) xguess
