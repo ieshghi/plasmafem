@@ -412,7 +412,7 @@ end subroutine gradyoupee
 subroutine specder(xmin,xmax,n,input,deriv)  !takes spectral derivatives of order n of a function evaluated at n points.
     use, intrinsic :: iso_c_binding
     implicit none
-    include '/usr/include/fftw3.f03'
+    include '/usr/local/include/fftw3.f03'
     type(c_ptr) :: plan
     integer :: n,i
     integer *8::plan_forward,plan_backward
@@ -630,7 +630,7 @@ subroutine fftgen(n,args,tran)
   use mesh
   use functions
   implicit none
-  include '/usr/include/fftw3.f03'
+  include '/usr/local/include/fftw3.f03'
   type (c_ptr) :: plan
   integer *4::i,j,m,mid,n
   integer *8::plan_forward,plan2
