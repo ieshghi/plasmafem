@@ -25,14 +25,6 @@ areas(i)*(solxx(i)-exactxx(p(i,1),p(i,2),c,d1,d2,d3))**2/size(solxx)
   enddo
   write(*,*) 'FEM error = ',sqrt(femerror)
  
-  !call srand(seed)
-  !allocate(errs(10))
-  !do i=1,10
-  !  val = rand()*(maxval(p(:,1))-minval(p(:,1))) + minval(p(:,1))
-  !  errs(i) = (interp(p,t,solx,val,0.0d0,infi)-exactx(val,0.0d0,c,d1,d2,d3))**2/1000
-  !enddo
-  !val = sqrt(sum(errs))
-
   known1 = sqrt(2.0d0/7)*sqrt((-6.0d0*d2+sqrt((14*c*d1+112*d1*d3+36*d2*d2)))/(c+8*d3))
   known2 = sqrt(2.0d0/7)*sqrt((-6.0d0*d2-sqrt((14*c*d1+112*d1*d3+36*d2*d2)))/(c+8*d3))
 
