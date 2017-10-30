@@ -4,7 +4,7 @@ program trackmin
   implicit none
   integer,parameter :: seed = 86456
   real *8::eps,del,kap,infi,findif,d1,d2,d3,c,halinfi,femerror,edge,val,known1,known2
-  real *8::extr
+  real *8::extr(2)
   real *8, dimension(:),allocatable::solx,soly,sol,areas,solxx,solxy,solyy,errs
   real *8, dimension(:,:),allocatable::p,ps
   integer,dimension(:),allocatable::b,bs
@@ -36,19 +36,65 @@ areas(i)*(solxx(i)-exactxx(p(i,1),p(i,2),c,d1,d2,d3))**2/size(solxx)
   known1 = sqrt(2.0d0/7)*sqrt((-6.0d0*d2+sqrt((14*c*d1+112*d1*d3+36*d2*d2)))/(c+8*d3))
   known2 = sqrt(2.0d0/7)*sqrt((-6.0d0*d2-sqrt((14*c*d1+112*d1*d3+36*d2*d2)))/(c+8*d3))
 
-  extr = newton(halinfi,solx,solxx,p,t) !2d rootfinding method, returns location of the minimum
+  extr = newton2d(halinfi,solx,soly,solxx,solyy,solxy,p,t) !2d rootfinding method, returns location of the minimum
    !(minx,miny)
-  write(*,*) 'Result : x = ',extr
-  write(*,*) 'Expected : x = ',known1
+  write(*,*) 'Result : x = ',extr(1),', y = ',extr(2)
+  write(*,*) 'Expected : x = ',known1,', y = ',0.0d0
   open(2,file='infiles/h.txt')
     read(2,*) edge
   close(2)
 
   open(1,file='track.dat',position='append')
-    write(1,*) femerror,abs(known1-extr),edge
+    write(1,*) femerror,sqrt((known1-extr(1))**2 + (extr(2)-0.0d0)**2),edge
   close(1)
 contains
 
+function newton2d(infi,fx,fy,fxx,fyy,fxy,p,t)
+    implicit none
+    real *8, dimension(:)::fx,fxx,fy,fxy,fyy
+    real *8::p(:,:)
+    integer::t(:,:)
+    real *8:: infi,error,xguess,xnew,yguess,ynew
+    real *8::newton2d(2),jac(2,2)
+    integer:: n,nt,i,minpos
+
+    minpos = minloc(abs(fx),dim=1)
+    xguess = p(minpos,1)
+    yguess = 0.0d0
+    error = 100
+
+    do while(error>infi)
+        jac(1,1) = interp(p,t,fxx,xguess,yguess,infi)
+        jac(2,2) = interp(p,t,fyy,xguess,yguess,infi)
+        jac(2,1) = interp(p,t,fxy,xguess,yguess,infi)
+        jac(1,2) = jac(2,1)
+       
+        xnew = xguess - jac(1,1)*interp(p,t,fx,xguess,yguess,infi) - jac(1,2)*interp(p,t,fy,xguess,yguess,infi)
+        ynew = yguess - jac(2,1)*interp(p,t,fx,xguess,yguess,infi) - jac(2,2)*interp(p,t,fy,xguess,yguess,infi)
+        
+        error = sqrt((xnew-xguess)**2 + (ynew-yguess)**2)
+
+        xguess = xnew
+        yguess = ynew
+    enddo
+
+    newton2d = (/xguess,yguess/)
+
+endfunction newton2d
+
+function inv2(mat)
+    implicit none
+    real *8::mat(2,2),inv2(2,2),det
+
+    det = mat(1,1)*mat(2,2)-mat(1,2)*mat(2,1)
+
+    inv2(1,1) = 1./det*mat(2,2)
+    inv2(2,2) = 1./det*mat(1,1)
+    inv2(2,1) = -1./det*mat(2,1)
+    inv2(1,2) = -1./det*mat(1,2)
+endfunction inv2
+    
+    
 function newton(infi,fx,fxx,p,t)
   implicit none
   real *8, dimension(:)::fx,fxx
