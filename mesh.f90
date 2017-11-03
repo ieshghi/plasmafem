@@ -400,7 +400,7 @@ module mesh
     m = m*(1/det)
   end subroutine threeinv
   
-  subroutine distmesh(p,t,b,eps,del,kap,c)
+  subroutine distmesh(p,t,b,d1,d2,d3,d4,c,gam)
   use functions
   implicit none
   integer *8, parameter :: maxrecs = 1000000
@@ -411,10 +411,10 @@ module mesh
   real *8,dimension(:,:),allocatable::p
   real *8,dimension(3)::temp
   integer,dimension(:),allocatable::b
-  real *8::eps,del,kap,c
+  real *8::d1,d2,d3,d4,c,gam
   nr = 0
   open(unit=1,file='infiles/params.txt')
-  read(1,*) eps, del, kap, c
+  read(1,*) d1,d2,d3,d4,c,gam
   close(1)
 
     open(unit=1,file='infiles/p.txt')

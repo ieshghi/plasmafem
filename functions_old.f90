@@ -7,7 +7,7 @@ contains
   real *8,intent(in)::x,y,c,uat
   real *8::gsrhs
 
-  gsrhs = 3.0d0/4.0d0*uat/(x**2)+(1-c)*x**(3.0d0/2.0d0)+c*x**(1.0d0/2.0d0)
+  gsrhs = 3.0d0/4.0d0*uat/(x**2)+c*x**(3.0d0/2.0d0)
   endfunction gsrhs
 
   function gsrhsx(uat,x,y,c) !Right hand side of x derivative
@@ -15,7 +15,7 @@ contains
   real *8,intent(in)::x,y,c,uat
   real *8::gsrhsx
 
-  gsrhsx = 3.0d0/2.0d0*(1-c)*x**(1.0d0/2.0d0) + c*1.0d0/(2.0d0*x**(1.0d0/2.0d0)) - 1.5d0*uat/(x**3)! + 3./4*uxat/(x**2)
+  gsrhsx = 3.0d0/2.0d0*c*x**(1.0d0/2.0d0) - 1.5d0*uat/(x**3)! + 3./4*uxat/(x**2)
   endfunction gsrhsx
   
   function stiff(x,y,c) !modification to the stiffness matrix (true for all derivatives)
@@ -40,8 +40,7 @@ contains
   real *8,intent(in)::x,y,c,uxat,uat
   real *8::gsrhsxx
 
-  gsrhsxx =  - 3.0d0*uxat/(x**3) + 9.0d0/2.0d0*uat/(x**4) + 3.0d0/4.0d0*1.0d0*(1-c)/(x**0.5d0)&
-      - c*1.0d0/(4.0d0*x**(3.0d0/2.0d0)) !3./4*uxxat/(x**2) 
+  gsrhsxx =  0 - 3.0d0*uxat/(x**3) + 9.0d0/2.0d0*uat/(x**4) + 3.0d0/4.0d0*1.0d0*c/(x**0.5d0) !3./4*uxxat/(x**2) 
   endfunction gsrhsxx
   
   function gsrhsyy(uat,x,y,c) !yy derivative of RHS
