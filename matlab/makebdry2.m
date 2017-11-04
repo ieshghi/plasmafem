@@ -10,7 +10,12 @@ function [] = makebdry2(eps,del,kap,c,gamma)
 	end
 	x = 1 + q.*cos(theta);
     y = q.*sin(theta);
-	
+
+    d1 = d(1);
+    d2 = d(2);
+    d3 = d(3);
+    d4 = d(4);
+
 	save bdry.txt x y -ASCII
-	save ../infiles/params.txt d(1) d(2) d(3) d(4) c gamma -ASCII
+	save ../infiles/params.txt d1 d2 d3 d4 c gamma -ASCII
 end

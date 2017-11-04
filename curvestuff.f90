@@ -90,10 +90,8 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) !Mast
   allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ubx(bsize),uby(bsize),uxt(n),ubxx(bsize),ubxy(bsize))
   
   write(*,*) "Generating boundary parametrisation"
-
   call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,d4,c,gam,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
 ! of angles which give equidistant points along the boundary
-
   do i = 1,n
     der = dxdy(tarc(i),d1,d2,d3,d4,c,gam,findif,infi,tran) !array of first derivatives at those points
     dder = ddxddy(tarc(i),d1,d2,d3,d4,c,gam,findif,infi,tran) !array of second derivatives
@@ -451,7 +449,7 @@ subroutine arcparam(a,b,tarc,darc,n,l,d1,d2,d3,d4,c,gam,infi,findif,tran) !provi
   implicit none
   integer::n,i,j
   real *8, dimension(:,:)::tran
-  real *8 a,b,c,darc,l,tinit,tfguess,tfupdate,currerr,ds,d1,d2,d3,infi,findif
+  real *8 a,b,c,darc,l,tinit,tfguess,tfupdate,currerr,ds,d1,d2,d3,d4,gam,infi,findif
   real *8,dimension(2)::der
   real *8,dimension(:),allocatable::t,w,tarc
   call lgmap(t,w,a,b,1)
