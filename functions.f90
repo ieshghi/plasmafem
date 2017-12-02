@@ -71,7 +71,7 @@ contains
 
 
 !  exact = (c/8.0*x**4+d1+d2*x**2+d3*(x**4-4*(x**2)*(y**2)))/sqrt(x)
-  exact = x**4*((1-c)/8+d3)+x**2*(c/2*log(x)+d2-4*y**2*d3)+d1+d4*y
+  exact = x**4*((1.0d0-c)/8.0d0+d3)+x**2*(c/2.0d0*log(x)+d2-4.0d0*y**2*d3)+d1+d4*y
   end function exact
   
   function exactx(x,y,c,d1,d2,d3,d4) !x derivative of solution
@@ -79,7 +79,7 @@ contains
   real *8::x,y,c,d1,d2,d3,d4,exactx
 
   !exactx = ((x**2)*(24*d2+7*(8*d3+c)*(x**2)-96*d3*y**2)-8*d1)/(16*x**(3.0d0/2.0d0))
-  exactx = x**3*((1-c)/2+4*d3)+x*(c*log(x)+2*d2-8*y**2*d3+c/2)
+  exactx = x**3*((1.0d0-c)/2.0d0+4.0d0*d3)+x*(c*log(x)+2.0d0*d2-8.0d0*y**2*d3+c/2.0d0)
   endfunction exactx
 
   function exacty(x,y,c,d1,d2,d3,d4) !y derivative of solution
@@ -87,7 +87,7 @@ contains
   real *8::x,y,c,d1,d2,d3,d4,exacty
 
 !  exacty =  (-8)*d3*y*x**(3.0d0/2.0d0)
-  exacty = d4 - 8*x**2*y*d3
+  exacty = d4 - 8.0d0*x**2*y*d3
   endfunction exacty
 
   function exactxx(x,y,c,d1,d2,d3,d4) !xx derivative of solution
@@ -95,7 +95,7 @@ contains
   real *8::x,y,c,d1,d2,d3,d4,exactxx
 
 !  exactxx = (24*d1+(x**2)*(24*d2+(x**2)*35*(8*d3+c)-96*d3*(y**2)))/(32*(x**(5.0d0/2.0d0)))
-  exactxx = x**2*(12*d3+3*(1-c)/2) + c*log(x)+c+c/2+2*d2-8*y**2*d3
+  exactxx = x**2*(12.0d0*d3+3.0d0*(1.0d0-c)/2.0d0) + c*log(x)+c+c/2.0d0+2.0d0*d2-8.0d0*y**2.0d0*d3
   endfunction exactxx
 
   function exactxy(x,y,c,d1,d2,d3,d4) !xy derivative of solution
@@ -103,7 +103,7 @@ contains
   real *8::x,y,c,d1,d2,d3,d4,exactxy
 
 !  exactxy = (-12)*d3*sqrt(x)*y
-  exactxy = -16*x*y*d3
+  exactxy = -16.0d0*x*y*d3
   endfunction exactxy
 
   function exactyy(x,y,c,d1,d2,d3,d4) !yy derivative of solution
@@ -111,7 +111,7 @@ contains
   real *8::x,y,c,d1,d2,d3,d4,exactyy
 !  exactyy = (-8)*d3*x**(3.0d0/2.0d0)
 
-  exactyy = -8*d3*x**2
+  exactyy = -8.0d0*d3*x**2.0d0
   endfunction exactyy
 
 endmodule functions
