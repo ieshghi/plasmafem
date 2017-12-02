@@ -10,8 +10,8 @@ program testing
   integer,dimension(:,:),allocatable::t,t2
   integer::i,n,nb,nt
     
-  infi = 1e-14
   findif = 1e-3
+  infi = 1e-14
 
   call distmesh(p2,t2,b2,d1,d2,d3,d4,c,gam)
   call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)

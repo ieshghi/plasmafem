@@ -61,7 +61,8 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) !Mast
   use mesh
   use functions
   implicit none
-  real *8,dimension(:,:),allocatable::gn,p,tran
+  real *8,dimension(:,:),allocatable::gn,p
+  complex *16, dimension(:,:),allocatable::tran
   real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,uxt,ubxx,ubxy
   real *8,dimension(:),allocatable::un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,solxx,solyy,solxy,x
   real *8::d1,d2,d3,d4,c,pi,ds,eps,del,kap,l,infi,findif,gam
@@ -167,8 +168,8 @@ subroutine derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,
   use mesh
   use functions
   implicit none
-  real *8,dimension(:,:)::gn
-  real *8,dimension(:,:)::p,tran
+  real *8,dimension(:,:)::gn,p
+  complex *16,dimension(:,:)::tran
   real *8,dimension(:)::tarc,rarc,dx,dy,ddx,ddy
   real *8,dimension(:),allocatable::uh,xin,yin,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,bound
   real *8::d1,d2,d3,d4,c,gam,pi,ds,eps,del,kap,l,infi,findif
@@ -366,7 +367,7 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,d4,c,gam,p,t,b,tarc,m,x,infi,findif,tran,
     use functions
     implicit none
     integer::n,m,i,nb,order
-    real *8, dimension(:,:)::tran
+    complex *16, dimension(:,:)::tran
     real *8, dimension(:,:), allocatable::srcloc,targloc,targnorm
     real *8, dimension(:)::tarc,bound
     real *8, dimension(:),optional::sol
@@ -448,7 +449,7 @@ end subroutine specder
 subroutine arcparam(a,b,tarc,darc,n,l,d1,d2,d3,d4,c,gam,infi,findif,tran) !provides n evenly spaced points along a curve parametrised by r,theta between theta = a and theta = b
   implicit none
   integer::n,i,j
-  real *8, dimension(:,:)::tran
+  complex *16, dimension(:,:)::tran
   real *8 a,b,c,darc,l,tinit,tfguess,tfupdate,currerr,ds,d1,d2,d3,d4,gam,infi,findif
   real *8,dimension(2)::der
   real *8,dimension(:),allocatable::t,w,tarc
@@ -540,7 +541,7 @@ end subroutine lgmap
 function ddxddy(theta,d1,d2,d3,d4,c,gam,infi,rerror,tran)
   implicit none
   real *8::infi,rerror
-  real *8,dimension(:,:)::tran
+  complex *16,dimension(:,:)::tran
   real *8 ::theta,d1,d2,d3,d4,c,gam,tp,tm,dx,dy,ddx
   real *8, dimension(2)::ddxddy,vec
   real *8,dimension(10)::args
@@ -551,26 +552,26 @@ function ddxddy(theta,d1,d2,d3,d4,c,gam,infi,rerror,tran)
   endif
   
   dx = 0.0d0
-  dx = (-1.0d0/280.0d0)*findr_fft(theta+4.0d0*infi,tran)!*dcos(theta+4.0d0*infi) 
-  dx = dx + (1.0d0/280.0d0)*findr_fft(theta-4.0d0*infi,tran)!*dcos(theta-4.0d0*infi)
-  dx = dx + (4.0d0/105.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dcos(theta+3.0d0*infi)
-  dx = dx + (-4.0d0/105.0d0)*findr_fft(theta-3.0d0*infi,tran)!*dcos(theta-3.0d0*infi)
-  dx = dx +(-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dcos(theta+2.0d0*infi) 
-  dx = dx + (1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*dcos(theta-2.0d0*infi)
-  dx = dx + (4.0d0/5.0d0)*findr_fft(theta+infi,tran)!*dcos(theta+infi)
-  dx = dx + (-4.0d0/5.0d0)*findr_fft(theta-infi,tran)!*dcos(theta-infi)
+  dx = (-1.0d0/280.0d0)*findr_fft(theta+4.0d0*infi,tran)!*cos(theta+4.0d0*infi) 
+  dx = dx + (1.0d0/280.0d0)*findr_fft(theta-4.0d0*infi,tran)!*cos(theta-4.0d0*infi)
+  dx = dx + (4.0d0/105.0d0)*findr_fft(theta+3.0d0*infi,tran)!*cos(theta+3.0d0*infi)
+  dx = dx + (-4.0d0/105.0d0)*findr_fft(theta-3.0d0*infi,tran)!*cos(theta-3.0d0*infi)
+  dx = dx +(-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*cos(theta+2.0d0*infi) 
+  dx = dx + (1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*cos(theta-2.0d0*infi)
+  dx = dx + (4.0d0/5.0d0)*findr_fft(theta+infi,tran)!*cos(theta+infi)
+  dx = dx + (-4.0d0/5.0d0)*findr_fft(theta-infi,tran)!*cos(theta-infi)
   dx = dx/infi
 
   ddx = 0.0d0
-  ddx = (-1.0d0/560.0d0)*findr_fft(theta+4.0d0*infi,tran)!*dcos(theta+4.0d0*infi) 
-  ddx = ddx + (-1.0d0/560.0d0)*findr_fft(theta-4.0d0*infi,tran)!*dcos(theta-4.0d0*infi)
-  ddx = ddx + (8.0d0/315.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dcos(theta+3.0d0*infi)
-  ddx = ddx + (8.0d0/315.0d0)*findr_fft(theta-3.0d0*infi,tran)!*dcos(theta-3.0d0*infi)
-  ddx = ddx + (-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dcos(theta+2.0d0*infi) 
-  ddx = ddx + (-1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*dcos(theta-2.0d0*infi)
-  ddx = ddx + (8.0d0/5.0d0)*findr_fft(theta+infi,tran)!*dcos(theta+infi)
-  ddx = ddx + (8.0d0/5.0d0)*findr_fft(theta-infi,tran)!*dcos(theta-infi)
-  ddx = ddx + (-205.0d0/72.0d0)*findr_fft(theta,tran)!*dcos(theta-infi)
+  ddx = (-1.0d0/560.0d0)*findr_fft(theta+4.0d0*infi,tran)!*cos(theta+4.0d0*infi) 
+  ddx = ddx + (-1.0d0/560.0d0)*findr_fft(theta-4.0d0*infi,tran)!*cos(theta-4.0d0*infi)
+  ddx = ddx + (8.0d0/315.0d0)*findr_fft(theta+3.0d0*infi,tran)!*cos(theta+3.0d0*infi)
+  ddx = ddx + (8.0d0/315.0d0)*findr_fft(theta-3.0d0*infi,tran)!*cos(theta-3.0d0*infi)
+  ddx = ddx + (-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*cos(theta+2.0d0*infi) 
+  ddx = ddx + (-1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*cos(theta-2.0d0*infi)
+  ddx = ddx + (8.0d0/5.0d0)*findr_fft(theta+infi,tran)!*cos(theta+infi)
+  ddx = ddx + (8.0d0/5.0d0)*findr_fft(theta-infi,tran)!*cos(theta-infi)
+  ddx = ddx + (-205.0d0/72.0d0)*findr_fft(theta,tran)!*cos(theta-infi)
   ddx = ddx/(infi*infi)
 
   ddxddy(1) = ddx*cos(theta)-2*dx*sin(theta)-findr_fft(theta,tran)*cos(theta)
@@ -582,21 +583,21 @@ end function ddxddy
 function dxdy(theta,d1,d2,d3,d4,c,gam,infi,rerror,tran) !takes dx/dtheta and dy/dtheta @ theta on a tokamak defined by eps,del,kap
   implicit none
   real *8::infi,rerror
-  real *8, dimension(:,:)::tran
+  complex *16, dimension(:,:)::tran
   real *8 ::theta,d1,d2,d3,d4,c,gam,dx,dy
   real *8, dimension(2)::dxdy
   real *8, dimension(10)::args
   args = (/d1,d2,d3,d4,0.7d0,rerror,1.0d0,0.0d0,c,gam/)
   
   dx = 0.0d0
-  dx = (-1.0d0/280.0d0)*findr_fft(theta+4.0d0*infi,tran)!*dcos(theta+4.0d0*infi) 
-  dx = dx + (1.0d0/280.0d0)*findr_fft(theta-4.0d0*infi,tran)!*dcos(theta-4.0d0*infi)
-  dx = dx + (4.0d0/105.0d0)*findr_fft(theta+3.0d0*infi,tran)!*dcos(theta+3.0d0*infi)
-  dx = dx + (-4.0d0/105.0d0)*findr_fft(theta-3.0d0*infi,tran)!*dcos(theta-3.0d0*infi)
-  dx = dx +(-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*dcos(theta+2.0d0*infi) 
-  dx = dx + (1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*dcos(theta-2.0d0*infi)
-  dx = dx + (4.0d0/5.0d0)*findr_fft(theta+infi,tran)!*dcos(theta+infi)
-  dx = dx + (-4.0d0/5.0d0)*findr_fft(theta-infi,tran)!*dcos(theta-infi)
+  dx = (-1.0d0/280.0d0)*findr_fft(theta+4.0d0*infi,tran)!*cos(theta+4.0d0*infi) 
+  dx = dx + (1.0d0/280.0d0)*findr_fft(theta-4.0d0*infi,tran)!*cos(theta-4.0d0*infi)
+  dx = dx + (4.0d0/105.0d0)*findr_fft(theta+3.0d0*infi,tran)!*cos(theta+3.0d0*infi)
+  dx = dx + (-4.0d0/105.0d0)*findr_fft(theta-3.0d0*infi,tran)!*cos(theta-3.0d0*infi)
+  dx = dx +(-1.0d0/5.0d0)*findr_fft(theta+2.0d0*infi,tran)!*cos(theta+2.0d0*infi) 
+  dx = dx + (1.0d0/5.0d0)*findr_fft(theta-2.0d0*infi,tran)!*cos(theta-2.0d0*infi)
+  dx = dx + (4.0d0/5.0d0)*findr_fft(theta+infi,tran)!*cos(theta+infi)
+  dx = dx + (-4.0d0/5.0d0)*findr_fft(theta-infi,tran)!*cos(theta-infi)
   dx = dx/infi
 
   dxdy(1) = dx*cos(theta)-findr_fft(theta,tran)*sin(theta)
@@ -608,18 +609,19 @@ end function dxdy
 function findr_fft(theta,tran)
   implicit none
   real *8::theta,a
-  real *8, dimension(:,:)::tran
-  real *8::findr_fft,ret
+  complex *16, dimension(:,:)::tran
+  complex *16::ret
+  real *8::findr_fft
   integer::m,i
 
-  m = size(tran(:,1))  
-  ret = 0.0d0
+  m = size(real(tran(:,1)))
+  ret = cmplx(0.0D0,0.0D0,kind=16)
   do i=1,m
-    a = tran(i,1)*theta
-    ret = ret + (tran(i,2))*cos(a)
+    a = real(tran(i,1))*theta
+    ret = ret + (tran(i,2))*cmplx(cos(a),sin(a),kind=16)
   enddo
 
-  findr_fft = ret
+  findr_fft = abs(ret)
 endfunction findr_fft
 
 subroutine fftgen(n,args,tran)
@@ -633,8 +635,8 @@ subroutine fftgen(n,args,tran)
   integer *8::plan_forward,plan2
   integer *8,dimension(:),allocatable::kf,savedk
   real *8, dimension(:), allocatable:: tarc
-  real *8, dimension(:),allocatable::savedr
-  real *8, dimension(:,:),allocatable::tran
+  complex *16, dimension(:),allocatable::savedr
+  complex *16, dimension(:,:),allocatable::tran
   complex *16,dimension(n)::rhat,rarc,rhat2,rarc2
   real *8::pi,r0
   real *8,dimension(10)::args
@@ -675,13 +677,13 @@ subroutine fftgen(n,args,tran)
   j=1
   do i=1,n
     if(abs(real(rhat(i)))>5e-12)then
-      savedr(j) = real(rhat(i))
+      savedr(j) = rhat(i)
       savedk(j) = kf(i)
       j=j+1
     endif
   enddo
   do i=1,m
-    tran(i,1) = savedk(i)
+    tran(i,1) = cmplx(savedk(i),0.0D0,kind=16)
     tran(i,2) = savedr(i)/n
   enddo
 endsubroutine fftgen
@@ -706,8 +708,8 @@ function findr(theta,args)!d1,d2,d3,theta,guess,errtol,centx,centy) !newton's me
   center(2) = centy
   findr = guess
   
-  uvec(1) = dcos(theta)
-  uvec(2) = dsin(theta)
+  uvec(1) = cos(theta)
+  uvec(2) = sin(theta)
   
   do i = 1,2
     x(i) = findr*uvec(i) + center(i)
