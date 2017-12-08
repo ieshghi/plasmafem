@@ -28,7 +28,7 @@ program testing
     psi(i) = sol(i)*sqrt(x)
     psix(i) = sqrt(x)*solx(i)+sol(i)/(2*sqrt(x))
     psiy(i) = sqrt(x)*soly(i)
-    psixx(i) = solx(i)/sqrt(x) + sqrt(x)*solxx(i) - sol(i)/(4*x**(3.0d0/2.0d0))
+    psixx(i) = solx(i)/sqrt(x) + sqrt(x)*solxx(i) - sol(i)/(4.0d0*x**(3.0d0/2.0d0))
     psixy(i) = sqrt(x)*solxy(i) + soly(i)/(2*sqrt(x))
     psiyy(i) = sqrt(x)*solyy(i)
 
