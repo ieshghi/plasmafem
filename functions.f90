@@ -40,8 +40,8 @@ contains
   real *8,intent(in)::x,y,c,uxat,uat
   real *8::gsrhsxx
 
-  gsrhsxx =  - 3.0d0*uxat/(x**3) + 9.0d0/2.0d0*uat/(x**4) + 3.0d0/4.0d0*1.0d0*(1-c)/(x**0.5d0)&
-      - c*3.0d0/(x**(5.0d0/2.0d0)) !3./4*uxxat/(x**2) 
+  gsrhsxx =  - 3.0d0*uxat/(x**3) + 9.0d0/2.0d0*uat/(x**4) + 3.0d0/4.0d0*(1-c)*1.0d0/(x**0.5d0)&
+      + c*3.0d0/(4.0d0*(x**(5.0d0/2.0d0))) !3./4*uxxat/(x**2) 
   endfunction gsrhsxx
   
   function gsrhsyy(uat,x,y,c) !yy derivative of RHS
