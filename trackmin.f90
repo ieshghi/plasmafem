@@ -3,41 +3,30 @@ program trackmin
   use curvestuff
   implicit none
   integer,parameter :: seed = 86456
-  real *8::eps,del,kap,infi,findif,d1,d2,d3,c,halinfi,femerror,edge,val,known1,known2
-  real *8::extr(2)
+  real *8::eps,del,kap,infi,findif,d1,d2,d3,d4,c,halinfi,femerror,edge,val,known1,known2,gam
+  real *8::extr(2),naive(2),h
   real *8, dimension(:),allocatable::solx,soly,sol,areas,solxx,solxy,solyy,errs
   real *8, dimension(:,:),allocatable::p,ps
   integer,dimension(:),allocatable::b,bs
   integer,dimension(:,:),allocatable::t,ts
-  integer::i
+  integer::i,minpos
   
-  call distmesh(ps,ts,bs,eps,del,kap,c) !get the parameters of our tokamak
+  call distmesh(ps,ts,bs,d1,d2,d3,d4,c,gam) !get the parameters of our tokamak
   infi = 1.0d0*1e-14
   halinfi = 1.0d0*1e-8
   findif = 1.0d0*1e-3
   call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) ! calculate first and second derivatives
-  call switchpars(eps,del,kap,c,d1,d2,d3)
-  
-  femerror = 0
-  do i=1,size(solxx)
-    femerror = femerror +&
-areas(i)*(solxx(i)-exactxx(p(i,1),p(i,2),c,d1,d2,d3))**2/size(solxx)
-  enddo
-  write(*,*) 'FEM error = ',sqrt(femerror)
  
-  known1 = sqrt(2.0d0/7)*sqrt((-6.0d0*d2+sqrt((14*c*d1+112*d1*d3+36*d2*d2)))/(c+8*d3))
-  known2 = sqrt(2.0d0/7)*sqrt((-6.0d0*d2-sqrt((14*c*d1+112*d1*d3+36*d2*d2)))/(c+8*d3))
-
-  extr = newton2d(halinfi,solx,soly,solxx,solyy,solxy,p,t) !2d rootfinding method, returns location of the minimum
-   !(minx,miny)
-  write(*,*) 'Result : x = ',extr(1),', y = ',extr(2)
-  write(*,*) 'Expected : x = ',known1,', y = ',0.0d0
-  open(2,file='infiles/h.txt')
-    read(2,*) edge
+  open(2,file='./infiles/h.txt')
+    read(2,*) h
   close(2)
 
+
+  extr = newton2d(halinfi,solx,soly,solxx,solyy,solxy,p,t) !2d rootfinding method, returns location of the minimum
+  minpos = minloc(sqrt(solx**2+soly**2),dim=1)
+  naive = (/p(minpos,1),p(minpos,2)/)
   open(1,file='track.dat',position='append')
-    write(1,*) femerror,sqrt((known1-extr(1))**2 + (extr(2)-0.0d0)**2),edge
+    write(1,*) extr(1),extr(2),naive(1),naive(2),c,h
   close(1)
 contains
 

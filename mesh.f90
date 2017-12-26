@@ -336,19 +336,6 @@ module mesh
   call mgmres_st(n,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
   end subroutine gssolve
  
-  function  linspace(a,b,n) !equivalent of python linspace
-    use functions
-  implicit none
-    real *8, intent(in):: a,b !start and endpoint
-    integer, intent(in):: n !number of elements
-    integer:: i ! loop variable
-    real *8:: dx, linspace(n)
-    dx = (b-a)/(n-1) !spacing between x's
-    do i = 1,n
-        linspace(i)=a+(i-1)*dx ! fill the output array
-    end do
-  end function linspace
-
   function  linspace2(a,b,n) !equivalent of python linspace, except it doesn't include the endpoint
     use functions
   implicit none
