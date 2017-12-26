@@ -22,4 +22,9 @@ while abs(curr_err) > err_tol
     x = r*uvec + center;        %% update x
     
     curr_err = func(x);         %% update error
+    x
+curr_err
+    if(imag(curr_err)~=0)
+        break
+    end
 end 

@@ -4,26 +4,41 @@ program trackmin
   implicit none
   integer,parameter :: seed = 86456
   real *8::eps,del,kap,infi,findif,d1,d2,d3,d4,c,halinfi,femerror,edge,val,known1,known2,gam
-  real *8::extr(2),naive(2),h
-  real *8, dimension(:),allocatable::solx,soly,sol,areas,solxx,solxy,solyy,errs
+  real *8::extr(2),naive(2),h,x,y
+  real *8, dimension(:),allocatable::solx,soly,sol,areas,solxx,solxy,solyy,errs,psi,psix,psiy,psixx,psixy,psiyy
   real *8, dimension(:,:),allocatable::p,ps
   integer,dimension(:),allocatable::b,bs
   integer,dimension(:,:),allocatable::t,ts
-  integer::i,minpos
+  integer::i,minpos,n
   
   call distmesh(ps,ts,bs,d1,d2,d3,d4,c,gam) !get the parameters of our tokamak
   infi = 1.0d0*1e-14
   halinfi = 1.0d0*1e-8
   findif = 1.0d0*1e-3
   call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) ! calculate first and second derivatives
+  n = size(sol)
+  allocate(psi(n),psix(n),psiy(n),psixx(n),psixy(n),psiyy(n))
+  do i=1,n
+    x = p(i,1)
+    y = p(i,2)
+    
+    psi(i) = sol(i)*sqrt(x)
+    psix(i) = sqrt(x)*solx(i)+sol(i)/(2*sqrt(x))
+    psiy(i) = sqrt(x)*soly(i)
+    psixx(i) = solx(i)/sqrt(x) + sqrt(x)*solxx(i) - sol(i)/(4.0d0*x**(3.0d0/2.0d0))
+    psixy(i) = sqrt(x)*solxy(i) + soly(i)/(2*sqrt(x))
+    psiyy(i) = sqrt(x)*solyy(i)
+
+  enddo
  
   open(2,file='./infiles/h.txt')
     read(2,*) h
   close(2)
 
 
-  extr = newton2d(halinfi,solx,soly,solxx,solyy,solxy,p,t) !2d rootfinding method, returns location of the minimum
-  minpos = minloc(sqrt(solx**2+soly**2),dim=1)
+!  extr = newton2d(halinfi,solx,soly,solxx,solyy,solxy,p,t) !2d rootfinding method, returns location of the minimum
+  extr = newton2d(halinfi,psix,psiy,psixx,psiyy,psixy,p,t)
+  minpos = minloc(sqrt(psix**2+psiy**2),dim=1)
   naive = (/p(minpos,1),p(minpos,2)/)
   open(1,file='track.dat',position='append')
     write(1,*) extr(1),extr(2),naive(1),naive(2),c,h
