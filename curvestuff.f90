@@ -78,7 +78,7 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) !Mast
   write(*,*) "Starting solve"
 
   call distmesh(p,t,b,d1,d2,d3,d4,c,gam) !we import the arrays describing the finite element decomposition of the tokamak
-  args = (/d1,d2,d3,d4,0.7d0,1.0d0*1e-14,1.0d0,0.0d0,c,gam/)!arguments for findr
+  args = (/d1,d2,d3,d4,0.3d0,1.0d0*1e-14,1.0d0,0.0d0,c,gam/)!arguments for findr
   
   write(*,*) "Generating boundary FFT"
 
@@ -545,7 +545,7 @@ function ddxddy(theta,d1,d2,d3,d4,c,gam,infi,rerror,tran)
   real *8 ::theta,d1,d2,d3,d4,c,gam,tp,tm,dx,dy,ddx
   real *8, dimension(2)::ddxddy,vec
   real *8,dimension(10)::args
-  args = (/d1,d2,d3,d4,0.7d0,rerror,1.0d0,0.0d0,c,gam/)
+  args = (/d1,d2,d3,d4,0.3d0,rerror,1.0d0,0.0d0,c,gam/)
 
   if(infi<1e-8)then
     infi=1e-8
@@ -587,7 +587,7 @@ function dxdy(theta,d1,d2,d3,d4,c,gam,infi,rerror,tran) !takes dx/dtheta and dy/
   real *8 ::theta,d1,d2,d3,d4,c,gam,dx,dy
   real *8, dimension(2)::dxdy
   real *8, dimension(10)::args
-  args = (/d1,d2,d3,d4,0.7d0,rerror,1.0d0,0.0d0,c,gam/)
+  args = (/d1,d2,d3,d4,0.3d0,rerror,1.0d0,0.0d0,c,gam/)
   
   dx = 0.0d0
   dx = (-1.0d0/280.0d0)*findr_fft(theta+4.0d0*infi,tran)!*cos(theta+4.0d0*infi) 
