@@ -69,8 +69,7 @@ contains
     
   !THIS IS AN EXACT SOLUTION FOR PSI, NOT U
 
-
-!  exact = (c/8.0*x**4+d1+d2*x**2+d3*(x**4-4*(x**2)*(y**2)))/sqrt(x)
+! exact = (c/8.0*x**4+d1+d2*x**2+d3*(x**4-4*(x**2)*(y**2)))/sqrt(x)
   exact = x**4*((1.0d0-c)/8.0d0+d3)+x**2*(c/2.0d0*log(x)+d2-4.0d0*y**2*d3)+d1+d4*y
   end function exact
   

@@ -45,6 +45,12 @@ program testing
   close(1)
 
   stdev = 0.0d0
+!  open(1,file='paper/triplot/psi.txt')
+!    do i=1,n
+!      write(1,*) psi(i)
+!    enddo
+!  close(1) 
+  
   open(1,file='files/convxx.dat',position='append')
     do i=1,n
       stdev = stdev + (areas(i)*(exx(i)-psixx(i))**2)/n
