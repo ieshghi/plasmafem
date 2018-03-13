@@ -52,58 +52,52 @@ program testing
 !  close(1) 
   
   open(1,file='files/convxx.dat',position='append')
-    do i=1,n
-      stdev = stdev + (areas(i)*(exx(i)-psixx(i))**2)/n
-    enddo
-    stdev = sqrt(stdev)
+    stdev = rell2(psixx,exx,areas)
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
 
-  stdev = 0.0d0
   open(1,file='files/convyy.dat',position='append')
-    do i=1,n
-      stdev = stdev + (areas(i)*(exy(i)-psixy(i))**2)/n
-    enddo
-    stdev = sqrt(stdev)
+    stdev = rell2(psiyy,eyy,areas)
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
 
-  stdev = 0.0d0
   open(1,file='files/convxy.dat',position='append')
-    do i=1,n
-      stdev = stdev + (areas(i)*(eyy(i)-psiyy(i))**2)/n
-    enddo
-    stdev = sqrt(stdev)
+    stdev = rell2(psixy,exy,areas)
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
 
-  stdev = 0.0d0
   open(1,file='files/convsol.dat',position='append')
-    do i=1,n
-      stdev = stdev + (areas(i)*(exa(i)-psi(i))**2)/n
-    enddo
-    stdev = sqrt(stdev)
+    stdev = rell2(psi,exa,areas)
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
 
-  stdev = 0.0d0
   open(1,file='files/convx.dat',position='append')
-    do i=1,n
-      stdev = stdev + (areas(i)*(ex(i)-psix(i))**2)/n
-    enddo
-    stdev = sqrt(stdev)
+    stdev = rell2(psix,ex,areas)
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
 
-  stdev = 0.0d0
   open(1,file='files/convy.dat',position='append')
-    do i=1,n
-      stdev = stdev + (areas(i)*(ey(i)-psiy(i))**2)/n
+    stdev = rell2(psiy,ey,areas)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  close(1) 
+
+  open(1,file='files/convex.dat',position='append')
+    stdev = 0
+    do i = 1,n
+        stdev = stdev + exx(i)**2
     enddo
     stdev = sqrt(stdev)
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
 
+  open(1,file='files/nodenom.dat',position='append')
+    stdev = 0
+    do i = 1,n
+        stdev = stdev + (psixx(i)-exx(i))**2
+    enddo
+    stdev = sqrt(stdev)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  close(1) 
 
 endprogram testing
 

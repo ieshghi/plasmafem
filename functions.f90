@@ -2,6 +2,26 @@ module functions
 implicit none
 contains
 
+  function rell2(num,ex,areas)
+  implicit none
+  real *8,intent(in),dimension(:)::num,ex,areas
+  real *8,allocatable::up(:),down(:),diff(:)
+  real *8::rell2
+  integer::i
+  allocate(up(size(num)),down(size(num)),diff(size(num)))
+
+  do i=1,size(num)
+    up(i) = (areas(i)*((num(i)-ex(i))**2))
+    down(i) = ((areas(i)*(ex(i)**2)))
+  enddo
+    
+  diff = abs(num-ex)
+
+  rell2 = maxval(diff)!sqrt(sum(up))/sqrt(sum(down))
+    
+  endfunction rell2
+
+
   function gsrhs(uat,x,y,c) !C=1, right hand side of Grad Shafranov equation after switching to u=psi/sqrt(x)
   implicit none
   real *8,intent(in)::x,y,c,uat
