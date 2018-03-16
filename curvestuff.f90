@@ -258,7 +258,7 @@ subroutine modsolveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds,uxt) !solves linear sys
     enddo
   enddo
 
-  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,2,1,2,-1,pot,potn,grad) !call integration routine
+  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,2,1,1,-1,pot,potn,grad) !call integration routine
 
   do i = 1,n
     rhs(i) = (-1.0d0)*real(pot(i))
@@ -300,7 +300,7 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
     enddo
   enddo
 
-  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,2,1,2,-1,pot,potn,grad) !call integration routine
+  call l2dacquadwrapl(xin,yin,ones,rnx,rny,ds,n,1,sigma,0,mu,2,1,1,-1,pot,potn,grad) !call integration routine
 
   do i = 1,n
     rhs(i) = (-1.0d0)*real(pot(i))
@@ -399,7 +399,6 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,d4,c,gam,p,t,b,tarc,m,x,infi,findif,tran,
     enddo  
 
     call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,2,-1,pot) !Call the fmm-qbx integrator
-
   do i = 1,m
     upx(i) = (-1.0d0)*real(pot(i)) 
     upy(i) = (1.0d0)*imag(pot(i))
@@ -410,7 +409,7 @@ end subroutine gradyoupee
 subroutine specder(xmin,xmax,n,input,deriv)  !takes spectral derivatives of order n of a function evaluated at n points.
     use, intrinsic :: iso_c_binding
     implicit none
-    include '/usr/local/include/fftw3.f03'
+    include '/usr/include/fftw3.f03'
     type(c_ptr) :: plan
     integer :: n,i
     integer *8::plan_forward,plan_backward
@@ -629,7 +628,7 @@ subroutine fftgen(n,args,tran)
   use mesh
   use functions
   implicit none
-  include '/usr/local/include/fftw3.f03'
+  include '/usr/include/fftw3.f03'
   type (c_ptr) :: plan
   integer *4::i,j,m,mid,n
   integer *8::plan_forward,plan2

@@ -17,8 +17,7 @@ contains
     
   diff = abs(num-ex)
 
-  rell2 = maxval(diff)!sqrt(sum(up))/sqrt(sum(down))
-    
+  rell2 =sqrt(sum(up))/sqrt(sum(down))
   endfunction rell2
 
 

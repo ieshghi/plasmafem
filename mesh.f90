@@ -153,7 +153,7 @@ module mesh
   real *8, dimension(:),allocatable::fu,val1,val2,arr,src_val,x,areas
   real *8, dimension(:)::bound,guess
   real *8, dimension(3,3)::a
-  real *8::cgs,cx,cy,det,temp,c
+  real *8::cgs,cx,cy,det,temp,c,xc,xc1,xc2,xc3
   real *8, dimension(2)::centroid, pt1,pt2,pt3
   logical, dimension(:),allocatable::edgetri
   
@@ -334,6 +334,41 @@ module mesh
   i = nb/4
   q = i*4
   call mgmres_st(n,size(ia),ia,ja,arr,x,fu,i,q,temp,temp)
+  if(order==2)then
+  k=1
+  do i = 1,nt
+    cx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !centroid position
+    cy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
+    do j =1,3 !use the same trick as in weirdder to compute the dot product of the basis functions
+      a(j,1) = (p(t(i,j),1))
+      a(j,2) = (p(t(i,j),2))
+      a(j,3) = 1.0
+    end do
+    det = abs(threedet(a))
+
+  if(edgetri(i))then
+      pt1(1) = (p(t(i,1),1)+p(t(i,2),1)+cx)/3 !pt1 is the centroid of the first sub-triangle, pt2 etc.
+      pt1(2) = (p(t(i,1),2)+p(t(i,2),2)+cy)/3
+      pt2(1) = (p(t(i,2),1)+p(t(i,3),1)+cx)/3
+      pt2(2) = (p(t(i,2),2)+p(t(i,3),2)+cy)/3
+      pt3(1) = (p(t(i,1),1)+p(t(i,3),1)+cx)/3
+      pt3(2) = (p(t(i,1),2)+p(t(i,3),2)+cy)/3
+
+      xc = (x(t(i,1))+x(t(i,2))+x(t(i,3)))/3
+      xc1 = (x(t(i,1))+x(t(i,2))+xc)/3
+      xc2 = (xc+x(t(i,2))+x(t(i,3)))/3
+      xc3 = (x(t(i,1))+xc+x(t(i,3)))/3
+      
+      src_val(k) = src_val(k) + stiff(pt1(1),pt1(2),0.0d0)*xc1*det*0.5/3
+      src_val(k+1) = src_val(k+1) + stiff(pt2(1),pt2(2),0.0d0)*xc2*det*0.5/3
+      src_val(k+2) = src_val(k+2) + stiff(pt3(1),pt3(2),0.0d0)*xc3*det*0.5/3
+      k = k+3    
+  else
+    src_val(k) = src_val(k) + stiff(cx,cy,0.0d0)*(x(t(i,1))+x(t(i,2))+x(t(i,3)))/3*det*0.5
+    k = k+1  
+  endif
+  enddo
+  endif
   end subroutine gssolve
  
   function  linspace2(a,b,n) !equivalent of python linspace, except it doesn't include the endpoint
