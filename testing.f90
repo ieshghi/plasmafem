@@ -4,7 +4,8 @@ program testing
   implicit none
   real *8:: infi,findif,c,d1,d2,d3,d4,gam,stdev,edge,x,y
   real *8, dimension(:),allocatable::solx,soly,sol,ex,ey,exa,exx,eyy,exy,&
-          areas,solxx,solxy,solyy,psi,psix,psiy,psixx,psixy,psiyy
+          areas,solxx,solxy,solyy,psi,psix,psiy,psixx,psixy,psiyy,ux,uy,ubx,uby,tarc,rarc&
+          xarc,yarc,exux,exuy,exubx,exuby
   real *8, dimension(:,:),allocatable::p,p2
   integer,dimension(:),allocatable::b,b2
   integer,dimension(:,:),allocatable::t,t2
@@ -14,10 +15,19 @@ program testing
   infi = 1e-14
 
   call distmesh(p2,t2,b2,d1,d2,d3,d4,c,gam)
-  call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas)
+  call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas,ux,uy,ubx,uby,tarc,rarc)
   n = size(sol)
   nb = size(b)
   nt = size(t(:,1))
+
+  !DEBUGGING
+    
+  allocate(xarc(size(tarc)),yarc(size(tarc)),exux(size(ux)),exuy(size(uy)),exubx(size(ubx)),exuby(size(uby)))
+  xarc = rarc*cos(tarc)
+  yarc = rarc*sin(tarc)
+
+  !DEBUGGING
+
 
   allocate(ex(n),ey(n),exa(n),exx(n),eyy(n),exy(n),psi(n),psix(n),psixx(n),psiy(n),psiyy(n),psixy(n)) !store exact solutions, for comparison
 
@@ -38,6 +48,7 @@ program testing
     exx(i) = exactxx(x,y,c,d1,d2,d3,d4)
     exy(i) = exactxy(x,y,c,d1,d2,d3,d4)
     eyy(i) = exactyy(x,y,c,d1,d2,d3,d4)
+
   enddo
   
   open(unit=1,file='infiles/h.txt')
@@ -45,59 +56,92 @@ program testing
   close(1)
 
   stdev = 0.0d0
-  open(1,file='paper/contourplot/psi.txt')
-    do i=1,n
-      write(1,*) psi(i)
-    enddo
+
+!FOR DEBUGGING
+
+  do i = 1,size(ubx)
+    exubx(i) = exactx(t(b(i),1),t(b(i),2),c,d1,d2,d3,d4) 
+    exuby(i) = exacty(t(b(i),1),t(b(i),2),c,d1,d2,d3,d4) 
+  enddo
+
+  do i = 1,size(ux)
+    exux(i) = exactx(xarc(i),yarc(i),c,d1,d2,d3,d4) 
+    exuy(i) = exacty(xarc(i),yarc(i),c,d1,d2,d3,d4) 
+  enddo
+
+  open(1,file='files/convux.dat',position='append')
+    stdev = rell2(ux,exux,areas)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
   
-  open(1,file='files/convxx.dat',position='append')
-    stdev = rell2(psixx,exx,areas)
+  open(1,file='files/convuy.dat',position='append')
+    stdev = rell2(uy,exuy,areas)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  close(1) 
+  
+  open(1,file='files/convubx.dat',position='append')
+    stdev = rell2(ubx,exubx,areas)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  close(1) 
+  
+  open(1,file='files/convuby.dat',position='append')
+    stdev = rell2(uby,exuby,areas)
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
 
-  open(1,file='files/convyy.dat',position='append')
-    stdev = rell2(psiyy,eyy,areas)
-    write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  close(1) 
+!FOR DEBUGGING
 
-  open(1,file='files/convxy.dat',position='append')
-    stdev = rell2(psixy,exy,areas)
-    write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  close(1) 
 
-  open(1,file='files/convsol.dat',position='append')
-    stdev = rell2(psi,exa,areas)
-    write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  close(1) 
+  
 
-  open(1,file='files/convx.dat',position='append')
-    stdev = rell2(psix,ex,areas)
-    write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  close(1) 
 
-  open(1,file='files/convy.dat',position='append')
-    stdev = rell2(psiy,ey,areas)
-    write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  close(1) 
+  !open(1,file='files/convxx.dat',position='append')
+  !  stdev = rell2(psixx,exx,areas)
+  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  !close(1) 
 
-  open(1,file='files/convex.dat',position='append')
-    stdev = 0
-    do i = 1,n
-        stdev = stdev + exx(i)**2
-    enddo
-    stdev = sqrt(stdev)
-    write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  close(1) 
+  !open(1,file='files/convyy.dat',position='append')
+  !  stdev = rell2(psiyy,eyy,areas)
+  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  !close(1) 
 
-  open(1,file='files/nodenom.dat',position='append')
-    stdev = 0
-    do i = 1,n
-        stdev = stdev + (psixx(i)-exx(i))**2
-    enddo
-    stdev = sqrt(stdev)
-    write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  close(1) 
+  !open(1,file='files/convxy.dat',position='append')
+  !  stdev = rell2(psixy,exy,areas)
+  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  !close(1) 
+
+  !open(1,file='files/convsol.dat',position='append')
+  !  stdev = rell2(psi,exa,areas)
+  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  !close(1) 
+
+  !open(1,file='files/convx.dat',position='append')
+  !  stdev = rell2(psix,ex,areas)
+  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  !close(1) 
+
+  !open(1,file='files/convy.dat',position='append')
+  !  stdev = rell2(psiy,ey,areas)
+  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  !close(1) 
+
+  !open(1,file='files/convex.dat',position='append')
+  !  stdev = 0
+  !  do i = 1,n
+  !      stdev = stdev + exx(i)**2
+  !  enddo
+  !  stdev = sqrt(stdev)
+  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  !close(1) 
+
+  !open(1,file='files/nodenom.dat',position='append')
+  !  stdev = 0
+  !  do i = 1,n
+  !      stdev = stdev + (psixx(i)-exx(i))**2
+  !  enddo
+  !  stdev = sqrt(stdev)
+  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  !close(1) 
 
 endprogram testing
 

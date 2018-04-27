@@ -56,7 +56,7 @@ subroutine gssolve_wrapper(c,p,t,b,srcloc,answer,srcval,areas,bound,order,sol) !
   answer = x !Spit out the answer
 endsubroutine gssolve_wrapper
 
-subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) !Master subroutine. Computes G-S solution, and its
+subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas,ux_noint,uy_noint,ubx,uby) !Master subroutine. Computes G-S solution, and its
 !       derivatives.
   use mesh
   use functions
@@ -65,7 +65,7 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) !Mast
   complex *16, dimension(:,:),allocatable::tran
   real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,uxt,ubxx,ubxy
   real *8,dimension(:),allocatable::un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,solxx,solyy,solxy,x
-  real *8::d1,d2,d3,d4,c,pi,ds,eps,del,kap,l,infi,findif,gam
+  real *8::d1,d2,d3,d4,c,pi,ds,eps,del,kap,l,infi,findif,gam,ux_noint,uy_noint
   real *8,dimension(2)::that,nhat,der,dder
   real *8,dimension(2,2)::flipmat
   real *8,dimension(10)::args
@@ -106,7 +106,11 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) !Mast
   enddo
 
   call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for the G matrix (described in the paper) 
-  call derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,yin,dx,dy,ddx,ddy,gn,tran,ubx,uby,ds,l) !Master
+
+  !CHANGE NOINT BACK AFTER DEBUGGING
+
+  call derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux_noint,uy_noint,sol,p,t,b,rarc,tarc,&
+      xin,yin,dx,dy,ddx,ddy,gn,tran,ubx,uby,ds,l,ux_noint,uy_noint) !Master
 !  first-derivative subroutine. Spits out the initial solution and the first derivatives
   
   ssize = size(sol)
@@ -131,6 +135,12 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas) !Mast
   enddo
 
   call specder(0.0d0,l,n,cxarr,uhn) !spectral derivative of U^h gives us U^h_t, which is equal to u^h_n
+
+
+
+  allocate(ux(size(ux_noint)),uy(size(uy_noint))) !REMOVE AFTER DEBUGGING
+
+
 
   do i = 1,n
     nhat = (/(-1.0d0)*dy(i)/sqrt(dx(i)**2+dy(i)**2),dx(i)/sqrt(dx(i)**2+dy(i)**2)/)
@@ -409,7 +419,7 @@ end subroutine gradyoupee
 subroutine specder(xmin,xmax,n,input,deriv)  !takes spectral derivatives of order n of a function evaluated at n points.
     use, intrinsic :: iso_c_binding
     implicit none
-    include '/usr/local/include/fftw3.f03'
+    include '/usr/include/fftw3.f03'
     type(c_ptr) :: plan
     integer :: n,i
     integer *8::plan_forward,plan_backward
@@ -628,7 +638,7 @@ subroutine fftgen(n,args,tran)
   use mesh
   use functions
   implicit none
-  include '/usr/local/include/fftw3.f03'
+  include '/usr/include/fftw3.f03'
   type (c_ptr) :: plan
   integer *4::i,j,m,mid,n
   integer *8::plan_forward,plan2
