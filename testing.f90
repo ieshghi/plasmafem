@@ -4,7 +4,7 @@ program testing
   implicit none
   real *8:: infi,findif,c,d1,d2,d3,d4,gam,stdev,edge,x,y
   real *8, dimension(:),allocatable::solx,soly,sol,ex,ey,exa,exx,eyy,exy,&
-          areas,solxx,solxy,solyy,psi,psix,psiy,psixx,psixy,psiyy,ux,uy,ubx,uby,tarc,rarc&
+          areas,solxx,solxy,solyy,psi,psix,psiy,psixx,psixy,psiyy,ux,uy,ubx,uby,tarc,rarc,&
           xarc,yarc,exux,exuy,exubx,exuby
   real *8, dimension(:,:),allocatable::p,p2
   integer,dimension(:),allocatable::b,b2
@@ -15,7 +15,7 @@ program testing
   infi = 1e-14
 
   call distmesh(p2,t2,b2,d1,d2,d3,d4,c,gam)
-  call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,areas,ux,uy,ubx,uby,tarc,rarc)
+  call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux,uy,ubx,uby,tarc,rarc)
   n = size(sol)
   nb = size(b)
   nt = size(t(:,1))
@@ -23,7 +23,7 @@ program testing
   !DEBUGGING
     
   allocate(xarc(size(tarc)),yarc(size(tarc)),exux(size(ux)),exuy(size(uy)),exubx(size(ubx)),exuby(size(uby)))
-  xarc = rarc*cos(tarc)
+  xarc = 1.0d0+rarc*cos(tarc)
   yarc = rarc*sin(tarc)
 
   !DEBUGGING
@@ -58,34 +58,37 @@ program testing
   stdev = 0.0d0
 
 !FOR DEBUGGING
-
   do i = 1,size(ubx)
-    exubx(i) = exactx(t(b(i),1),t(b(i),2),c,d1,d2,d3,d4) 
-    exuby(i) = exacty(t(b(i),1),t(b(i),2),c,d1,d2,d3,d4) 
+    x = p(b(i),1)
+    y = p(b(i),2)
+    exubx(i) = sqrt(x)*exactx(x,y,c,d1,d2,d3,d4)
+    exuby(i) = sqrt(x)*exacty(x,y,c,d1,d2,d3,d4) 
   enddo
 
   do i = 1,size(ux)
-    exux(i) = exactx(xarc(i),yarc(i),c,d1,d2,d3,d4) 
-    exuy(i) = exacty(xarc(i),yarc(i),c,d1,d2,d3,d4) 
+    x = xarc(i)
+    y = yarc(i)
+    exux(i) = sqrt(x)*exactx(x,y,c,d1,d2,d3,d4)
+    exuy(i) = sqrt(x)*exacty(x,y,c,d1,d2,d3,d4) 
   enddo
 
   open(1,file='files/convux.dat',position='append')
-    stdev = rell2(ux,exux,areas)
+    stdev = maxval(abs(ux-exux))
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
   
   open(1,file='files/convuy.dat',position='append')
-    stdev = rell2(uy,exuy,areas)
+    stdev = maxval(abs(uy-exuy))
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  close(1) 
-  
+  close(1)
+
   open(1,file='files/convubx.dat',position='append')
-    stdev = rell2(ubx,exubx,areas)
+    stdev = maxval(abs(ubx-exubx))
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
   
   open(1,file='files/convuby.dat',position='append')
-    stdev = rell2(uby,exuby,areas)
+    stdev = maxval(abs(uby-exuby))
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
 
