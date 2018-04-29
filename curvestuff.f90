@@ -56,15 +56,15 @@ subroutine gssolve_wrapper(c,p,t,b,srcloc,answer,srcval,areas,bound,order,sol) !
   answer = x !Spit out the answer
 endsubroutine gssolve_wrapper
 
-subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux_noint,uy_noint,ubx,uby,tarc,rarc) !Master subroutine. Computes G-S solution, and its
-!       derivatives.
+subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,un,ubn,ubx,uby,tarc,rarc,dx,dy) !Master subroutine. Computes G-S solution, and its
+!       derivatives. !REMOVE UN,UBN AFTER DEBUGGING
   use mesh
   use functions
   implicit none
   real *8,dimension(:,:),allocatable::gn,p
   complex *16, dimension(:,:),allocatable::tran
   real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,uxt,ubxx,ubxy
-  real *8,dimension(:),allocatable::un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,solxx,solyy,solxy,x,ux_noint,uy_noint
+  real *8,dimension(:),allocatable::un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,solxx,solyy,solxy,x,ubn
   real *8::d1,d2,d3,d4,c,pi,ds,eps,del,kap,l,infi,findif,gam
   real *8,dimension(2)::that,nhat,der,dder
   real *8,dimension(2,2)::flipmat
@@ -88,7 +88,7 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux_n
   pi = 4.0d0*atan(1.0d0) !FORTRAN needs us to tell is what pi is, even though it knows the arctan() function...
   allocate(gn(n,n))
   allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n))
-  allocate(rarc(n),uh(n),cxarr(n),uhn(n),un(n),upn(n),ubx(bsize),uby(bsize),uxt(n),ubxx(bsize),ubxy(bsize))
+  allocate(rarc(n),uh(n),cxarr(n),uhn(n),upn(n),ubx(bsize),uby(bsize),uxt(n),ubxx(bsize),ubxy(bsize)) !REMOVE UBN
   
   write(*,*) "Generating boundary parametrisation"
   call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,d4,c,gam,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
@@ -107,21 +107,19 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux_n
 
   call getgnmat(gn,xin,yin,dx,dy,ddx,ddy,n) !as the name says, solves for the G matrix (described in the paper) 
 
-  !CHANGE NOINT BACK AFTER DEBUGGING
+  !CHANGE un,ubn BACK AFTER DEBUGGING
 
-  call derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux_noint,uy_noint,sol,p,t,b,rarc,tarc,&
-      xin,yin,dx,dy,ddx,ddy,gn,tran,ubx,uby,ds,l) !Master
+  call derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,&
+      xin,yin,dx,dy,ddx,ddy,gn,tran,ubx,uby,ds,l,un,ubn) !Master
 !  first-derivative subroutine. Spits out the initial solution and the first derivatives
-  
 
   ssize = size(sol)
   allocate(solyy(ssize))
   !Solve for solxx,solxy
   do i =1,n
-    cxarr(i) = cmplx(ux_noint(i),0.0D00,kind=16) !We need to store arrays inside complex arrays for the spectral derivative code to take
+    cxarr(i) = cmplx(ux(i),0.0D00,kind=16) !We need to store arrays inside complex arrays for the spectral derivative code to take
 !    them in properly
   enddo
-  !CHANGE BACK AFTER DEBUGGING
   call specder(0.00d0,l,n,cxarr,uxt) !Take spectral derivative of the x derivative boundary to get the tangential component of
 !  second derivative boundary
 
@@ -136,12 +134,6 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux_n
   enddo
 
   call specder(0.0d0,l,n,cxarr,uhn) !spectral derivative of U^h gives us U^h_t, which is equal to u^h_n
-
-
-
-  allocate(ux(size(ux_noint)),uy(size(uy_noint))) !REMOVE AFTER DEBUGGING
-
-
 
   do i = 1,n
     nhat = (/(-1.0d0)*dy(i)/sqrt(dx(i)**2+dy(i)**2),dx(i)/sqrt(dx(i)**2+dy(i)**2)/)
@@ -174,15 +166,15 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux_n
   enddo
 endsubroutine dderpois
 
-subroutine derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,yin,dx,dy,ddx,&
-                ddy,gn,tran,ubx,uby,ds,l) !solves poisson equation with first derivatives to second order error.
+subroutine derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,xin,yin,dx,dy,ddx,& !REMOVE UN,UBN AFTER DEBUGGING
+                ddy,gn,tran,ubx,uby,ds,l,un,ubn) !solves poisson equation with first derivatives to second order error.
   use mesh
   use functions
   implicit none
   real *8,dimension(:,:)::gn,p
   complex *16,dimension(:,:)::tran
   real *8,dimension(:)::tarc,rarc,dx,dy,ddx,ddy
-  real *8,dimension(:),allocatable::uh,xin,yin,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,bound
+  real *8,dimension(:),allocatable::uh,xin,yin,upx,upy,uhn,un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,bound,ubn
   real *8::d1,d2,d3,d4,c,gam,pi,ds,eps,del,kap,l,infi,findif
   real *8,dimension(2)::that,nhat,der,dder
   real *8,dimension(2,2)::flipmat
@@ -197,7 +189,7 @@ subroutine derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,
   n = 3*size(b) !we want the size of our edge decomposition to be comparable to that of the fem, but maybe more accurate
   pi = 4.0d0*atan(1.0d0)
 
-  allocate(uh(n),cxarr(n),uhn(n),un(n),upn(n),ux(n),uy(n),bound(bsize))
+  allocate(uh(n),cxarr(n),uhn(n),un(n),upn(n),ux(n),uy(n),bound(bsize),ubn(bsize))
   
   do i=1,bsize
     bound(i) = 0.0d0
@@ -230,7 +222,8 @@ subroutine derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,
     endif
     j = upper(temp,tarc) !in our array of angles, find the index which is right above our point
     k = lower(temp,tarc) !find the one right below
-
+    
+    ubn(i) = interp1d(temp,tarc(k),tarc(j),un(k),un(j)) !REMOVE AFTER DEBUGGING
     ubx(i) = interp1d(temp,tarc(k),tarc(j),ux(k),ux(j)) !interpolate x derivative boundary
     uby(i) = interp1d(temp,tarc(k),tarc(j),uy(k),uy(j)) !same for y
   enddo
