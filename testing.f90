@@ -28,8 +28,8 @@ program testing
   allocate(nhats_noint(size(tarc),2),nhats(nb,2),dx(nb),dy(nb))
 
   do i = 1,size(tarc)
-    nhats(i,1) = dx_noint(i)/sqrt(dx_noint(i)**2+dy_noint(i)**2)
-    nhats(i,2) = dy_noint(i)/sqrt(dx_noint(i)**2+dy_noint(i)**2)
+    nhats(i,1) = -dy_noint(i)/sqrt(dx_noint(i)**2+dy_noint(i)**2)
+    nhats(i,2) = dx_noint(i)/sqrt(dx_noint(i)**2+dy_noint(i)**2)
   enddo
 
   xarc = 1.0d0+rarc*cos(tarc)
