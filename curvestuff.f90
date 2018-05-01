@@ -56,7 +56,7 @@ subroutine gssolve_wrapper(c,p,t,b,srcloc,answer,srcval,areas,bound,order,sol) !
   answer = x !Spit out the answer
 endsubroutine gssolve_wrapper
 
-subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,un,ubn,ubx,uby,tarc,rarc,dx,dy) !Master subroutine. Computes G-S solution, and its
+subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux_old,uy_old,ubx,uby,tarc,rarc,dx,dy) !Master subroutine. Computes G-S solution, and its
 !       derivatives. !REMOVE UN,UBN AFTER DEBUGGING
   use mesh
   use functions
@@ -65,6 +65,7 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,un,u
   complex *16, dimension(:,:),allocatable::tran
   real *8,dimension(:),allocatable::tarc,uh,xin,yin,dx,dy,ddx,ddy,rarc,upx,upy,uhn,uxt,ubxx,ubxy
   real *8,dimension(:),allocatable::un,upn,ux,uy,ubx,uby,sol,solx,soly,areas,solxx,solyy,solxy,x,ubn
+  real *8, dimension(:),allocatable::ux_old,uy_old
   real *8::d1,d2,d3,d4,c,pi,ds,eps,del,kap,l,infi,findif,gam
   real *8,dimension(2)::that,nhat,der,dder
   real *8,dimension(2,2)::flipmat
@@ -112,6 +113,10 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,un,u
   call derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,tarc,&
       xin,yin,dx,dy,ddx,ddy,gn,tran,ubx,uby,ds,l,un,ubn) !Master
 !  first-derivative subroutine. Spits out the initial solution and the first derivatives
+
+  allocate(ux_old(size(ux)),uy_old(size(uy)))
+  ux_old = ux
+  uy_old = uy
 
   ssize = size(sol)
   allocate(solyy(ssize))

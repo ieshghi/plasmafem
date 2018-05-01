@@ -5,7 +5,7 @@ program testing
   real *8:: infi,findif,c,d1,d2,d3,d4,gam,stdev,edge,x,y
   real *8, dimension(:),allocatable::solx,soly,sol,ex,ey,exa,exx,eyy,exy,&
           areas,solxx,solxy,solyy,psi,psix,psiy,psixx,psixy,psiyy,un,ubn,ubx,uby,tarc,rarc,&
-          xarc,yarc,exun,exubn
+          xarc,yarc,exux,exuy,exubx,exuby,ux,uy
   real *8, dimension(:),allocatable:: dx_noint,dx,dy_noint,dy
   real *8, dimension(:,:),allocatable:: nhats_noint,nhats
   real *8, dimension(:,:),allocatable::p,p2
@@ -17,20 +17,22 @@ program testing
   infi = 1e-14
 
   call distmesh(p2,t2,b2,d1,d2,d3,d4,c,gam)
-  call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,un,ubn,ubx,uby,tarc,rarc,dx_noint,dy_noint)
+  call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux,uy,ubx,uby,tarc,rarc,dx_noint,dy_noint)
   n = size(sol)
   nb = size(b)
   nt = size(t(:,1))
 
   !DEBUGGING
-    
-  allocate(xarc(size(tarc)),yarc(size(tarc)),exun(size(un)),exubn(size(ubn)))
-  allocate(nhats_noint(size(tarc),2),nhats(nb,2),dx(nb),dy(nb))
 
-  do i = 1,size(tarc)
-    nhats(i,1) = -dy_noint(i)/sqrt(dx_noint(i)**2+dy_noint(i)**2)
-    nhats(i,2) = dx_noint(i)/sqrt(dx_noint(i)**2+dy_noint(i)**2)
-  enddo
+  allocate(exux(size(ux)),exuy(size(uy)))
+
+!  allocate(xarc(size(tarc)),yarc(size(tarc)),exun(size(un)),exubn(size(ubn)))
+!  allocate(nhats_noint(size(tarc),2),nhats(nb,2),dx(nb),dy(nb))
+!
+!  do i = 1,size(tarc)
+!    nhats_noint(i,1) = -dy_noint(i)/sqrt(dx_noint(i)**2+dy_noint(i)**2)
+!    nhats_noint(i,2) = dx_noint(i)/sqrt(dx_noint(i)**2+dy_noint(i)**2)
+!  enddo
 
   xarc = 1.0d0+rarc*cos(tarc)
   yarc = rarc*sin(tarc)
@@ -60,41 +62,46 @@ program testing
 !
 !  enddo
   
-  open(unit=1,file='infiles/h.txt')
+  open(1,file='infiles/h.txt')
     read(1,*) edge
   close(1)
-
   stdev = 0.0d0
 
 
 !FOR DEBUGGING
-  do i = 1,size(ubn)
-    x = p(b(i),1)
-    y = p(b(i),2)
-    exubn(i) = (sqrt(x)*(exactx(x,y,c,d1,d2,d3,d4)*nhats(i,1)+exacty(x,y,c,d1,d2,d3,d4)*nhats(i,2)))
-  enddo
+!  do i = 1,size(ubn)
+!    x = p(b(i),1)
+!    y = p(b(i),2)
+!    exubx(i) = ((exactx(x,y,c,d1,d2,d3,d4))
+!    ubx(i) = sqrt(x)*ubn(i)
+!  enddo
 
-  do i = 1,size(un)
+  do i = 1,size(ux)
     x = xarc(i)
     y = yarc(i)
-    exun(i) = (sqrt(x)*(exactx(x,y,c,d1,d2,d3,d4)*nhats(i,1)+exacty(x,y,c,d1,d2,d3,d4)*nhats(i,2)))
+    exux(i) = ((exactx(x,y,c,d1,d2,d3,d4)))
+    ux(i) = sqrt(x)*ux(i)
+    exuy(i) = ((exacty(x,y,c,d1,d2,d3,d4)))
+    uy(i) = sqrt(x)*uy(i)
   enddo
-  open(1,file='files/convun.dat',position='append')
-    stdev = maxval(abs(un-exun))
+
+  open(1,file='files/convux.dat',position='append')
+    stdev = maxval(abs(ux-exux))
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
   
-  open(1,file='files/convubn.dat',position='append')
-    stdev = maxval(abs(ubn-exubn))
+  open(1,file='files/convuy.dat',position='append')
+    stdev = maxval(abs(uy-exuy))
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
-
+  open(1,file='files/ux.dat')
+    do i = 1,size(ux)
+        write(1,*) ux(i), exux(i),uy(i),exuy(i)
+    enddo
+  close(1) 
+ 
 !FOR DEBUGGING
-
-
   
-
-
   !open(1,file='files/convxx.dat',position='append')
   !  stdev = rell2(psixx,exx,areas)
   !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
