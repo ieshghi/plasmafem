@@ -136,14 +136,18 @@ def conver(slope=-2,der=0,offset=0):
       conv = np.loadtxt('files/convxy.dat')
   elif der=='yy':
       conv = np.loadtxt('files/convyy.dat')
+  elif der == 'bound_y':
+      conv = np.loadtxt('files/convuy.dat')
+  elif der == 'bound_x':
+      conv = np.loadtxt('files/convux.dat')
   c = conv[:,1]
   conv = conv[:,0]
   ax = fig.add_subplot(111)
 #  ax.loglog(c,conv,label='Result')
 #  ax.loglog(c,c**(slope),label=='Expected')
   
-  ax.plot((-1)*np.log10(c),np.log10(conv),label='Result')
-  ax.plot((-1)*np.log10(c),slope*np.log10(c[0])-slope*np.log10(c)+np.log10(conv[0]),label='Expected')
+  ax.plot((-1)*np.log10(c),np.log10(conv),'rx',label='Result')
+  ax.plot((-1)*np.log10(c),-slope*np.log10(c),label='Expected')
 
   ax.set_title('Linear elements convergence')
       
