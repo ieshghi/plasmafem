@@ -208,7 +208,7 @@ subroutine derpois(d1,d2,d3,d4,c,gam,infi,findif,solx,soly,ux,uy,sol,p,t,b,rarc,
     cxarr(i) = cmplx(uh(i),0.0D00,kind=16)
   enddo
   
-  call specder(0.0d0,l,n,cxarr,uhn) !spectral derivative of u^h gives us u^h_t, which is equal to u^h_n
+  call specder(0.0d0,l,n,cxarr,uhn) !spectral derivative of U^h gives us U^h_t, which is equal to little_u^h_n
 
   do i = 1,n
     nhat = (/(-1.0d0)*dy(i)/sqrt(dx(i)**2+dy(i)**2),dx(i)/sqrt(dx(i)**2+dy(i)**2)/)
@@ -288,7 +288,7 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
   real *8::ds,norm
   real *8,dimension(n)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,rhs
   real *8,dimension(n,n)::lhs,gn
-  real *8,dimension(2)::ut
+  real *8,dimension(2)::that
   complex *16,dimension(n)::pot,potn,sigma,mu
   complex *16,dimension(n,2)::grad  
 
@@ -297,9 +297,9 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
     norm = sqrt(dx(i)**2+dy(i)**2)
     rnx(i) = (1.0d0)*dy(i)/norm !x-component of normal derivative vector
     rny(i) = (-1.0d0)*dx(i)/norm !y-component
-    ut = (/dx(i)/norm,dy(i)/norm/) !tangent unit vector
+    that = (/dx(i)/norm,dy(i)/norm/) !tangent unit vector
     mu(i) = cmplx(0.0D0,0.0D0,kind=16) !the mu element in this integration is zero
-    sigma(i) = cmplx(upx(i)*ut(1)+upy(i)*ut(2),kind=16)
+    sigma(i) = cmplx(upx(i)*that(1)+upy(i)*that(2),kind=16)
     do j=1,n !this nested loop builds the left hand side matrix, which should be 1/2*eye(n) + ds*g + ds^2*ones(n,n)
       if(i==j) then
         lhs(i,j) = 0.5d0 + ds*gn(i,j) + ds**2
@@ -381,7 +381,8 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,d4,c,gam,p,t,b,tarc,m,x,infi,findif,tran,
     real *8, dimension(:)::tarc,bound
     real *8, dimension(:),optional::sol
     real *8, dimension(:), allocatable::srcval,psol,x,y,r,upx,upy,areas
-    complex *16, dimension(:), allocatable::pot
+    complex *16, dimension(:), allocatable::pot,pot1,pot2
+    complex *16, dimension(:,:),allocatable::grad1,grad2
     real *8:: d1,d2,d3,d4,c,gam,pi,l,infi,findif
     real *8,dimension(2)::der
     real *8, dimension(:,:)::p
@@ -397,7 +398,9 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,d4,c,gam,p,t,b,tarc,m,x,infi,findif,tran,
     endif
     n = size(srcval)
     allocate(targloc(2,m),targnorm(2,m),pot(m),r(m),upx(m),upy(m))
-
+    !DEBUG
+    allocate(pot1(m),pot2(m),grad1(2,m),grad2(2,m))
+    !DEBUG
     do i = 1,m
       r(i) = findr_fft(tarc(i),tran)
       targloc(1,i) = 1.0d0 + r(i)*cos(tarc(i))!targloc is the array of points where we want our integrated grad u^p
@@ -407,11 +410,14 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,d4,c,gam,p,t,b,tarc,m,x,infi,findif,tran,
       targnorm(2,i) = (-1.0d0)*der(1)/sqrt(der(1)**2+der(2)**2)
     enddo  
 
-    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,2,-1,pot) !Call the fmm-qbx integrator
+   call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,2,-1,pot) !Call the fmm-qbx integrator
+!  call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,2,-1,pot1,pot2,grad1,grad2) !Call the fmm-qbx integrator
   do i = 1,m
     upx(i) = (-1.0d0)*real(pot(i)) 
     upy(i) = (1.0d0)*imag(pot(i))
   enddo
+!  upx = real(pot1)
+!  upy = (-1)*imag(pot1)
 
 end subroutine gradyoupee
 

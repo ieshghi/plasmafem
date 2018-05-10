@@ -17,7 +17,7 @@ program testing
   infi = 1e-14
 
   call distmesh(p2,t2,b2,d1,d2,d3,d4,c,gam)
-  call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux,uy,ubx,uby,tarc,rarc,dx_noint,dy_noint)
+  call dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux,uy,ubx,uby,tarc,rarc,upx,upy)
   n = size(sol)
   nb = size(b)
   nt = size(t(:,1))
@@ -84,6 +84,21 @@ program testing
     exuy(i) = ((exacty(x,y,c,d1,d2,d3,d4)))
     uy(i) = sqrt(x)*uy(i)
   enddo
+
+  open(1,file='files/upx_curr.dat')
+
+  close(1)
+  open(1,file='files/upy_curr.dat')
+
+  close(1)
+
+  open(1,file='files/upx_old.dat')
+  
+  close(1)
+  open(1,file='files/upy_old.dat')
+
+  close(1)
+
 
   open(1,file='files/convux.dat',position='append')
     stdev = maxval(abs(ux-exux))

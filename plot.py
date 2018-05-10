@@ -158,41 +158,5 @@ def conver(slope=-2,der=0,offset=0):
   
 
   return 0
-def conv(slope=-2):
-  fig = plt.figure()
-  conv = np.loadtxt('files/conv.dat')
-  print(conv)
-  c = np.array([10.,20.,40.,80.])
-  ax = fig.add_subplot(111)
-#  ax.loglog(c,conv,label='Result')
-#       ax.loglog(c,c**(slope),label=='Expected')
-  
-  ax.loglog(c,conv)
-  ax.loglog(c,c**(slope))
-  ax.set_title('Linear elements $\psi$ convergence')
-      
-  ax.set_xlabel('log10(N)')
-  ax.set_ylabel('log10(Error)')
-  ax.legend()
-  ax.plot()  
-  
 
-  return 0
-
-
-def plotting(ex = 0):
-	t = np.loadtxt('./infiles/t.dat')
-	p = np.loadtxt('./infiles/p.dat')
-	forsol = np.loadtxt('./files/x.dat')
-	exact = np.loadtxt('./files/exact.dat')
-	tr = Triangulation(p[:,0],p[:,1],triangles = t-1)
-	
-	if ex == 0:
-		ax = Axes3D(plt.gcf())
-		ax.plot_trisurf(tr,forsol)
-	else:
-		ax = Axes3D(plt.gcf())
-		ax.plot_trisurf(tr,exact)
-    
-	return 0
 
