@@ -5,7 +5,7 @@ program testing
   real *8:: infi,findif,c,d1,d2,d3,d4,gam,stdev,edge,x,y
   real *8, dimension(:),allocatable::solx,soly,sol,ex,ey,exa,exx,eyy,exy,&
           areas,solxx,solxy,solyy,psi,psix,psiy,psixx,psixy,psiyy,un,ubn,ubx,uby,tarc,rarc,&
-          xarc,yarc,exux,exuy,exubx,exuby,ux,uy
+          xarc,yarc,exux,exuy,exubx,exuby,ux,uy,upx,upy
   real *8, dimension(:),allocatable:: dx_noint,dx,dy_noint,dy
   real *8, dimension(:,:),allocatable:: nhats_noint,nhats
   real *8, dimension(:,:),allocatable::p,p2
@@ -85,19 +85,19 @@ program testing
     uy(i) = sqrt(x)*uy(i)
   enddo
 
-  open(1,file='files/upx_curr.dat')
-
-  close(1)
-  open(1,file='files/upy_curr.dat')
-
-  close(1)
-
-  open(1,file='files/upx_old.dat')
-  
-  close(1)
-  open(1,file='files/upy_old.dat')
-
-  close(1)
+!  open(1,file='files/upx_curr.dat')
+!
+!  close(1)
+!  open(1,file='files/upy_curr.dat')
+!
+!  close(1)
+!
+!  open(1,file='files/upx_old.dat')
+!  
+!  close(1)
+!  open(1,file='files/upy_old.dat')
+!
+!  close(1)
 
 
   open(1,file='files/convux.dat',position='append')
