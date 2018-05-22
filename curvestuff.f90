@@ -8,7 +8,7 @@ subroutine gssolve_wrapper(c,p,t,b,srcloc,answer,srcval,areas,bound,order,sol) !
   use mesh
   use functions
   implicit none
-  real *8,parameter::small = 1e-14 !When we use fixed point iteration (only for the initial solution), we want it to be to this
+  real *8,parameter::small = 1e-1 !When we use fixed point iteration (only for the initial solution), we want it to be to this
 !  accuracy
   real *8::error,c
   integer:: order,nt,i,n
@@ -90,7 +90,6 @@ subroutine dderpois(infi,findif,solx,soly,solxx,solxy,solyy,sol,p,t,b,areas,ux_o
   allocate(gn(n,n))
   allocate(xin(n),yin(n),dx(n),dy(n),ddx(n),ddy(n))
   allocate(rarc(n),uh(n),cxarr(n),uhn(n),upn(n),ubx(bsize),uby(bsize),uxt(n),ubxx(bsize),ubxy(bsize)) !REMOVE UBN
-  
   write(*,*) "Generating boundary parametrisation"
   call arcparam(0.0d0,2.0d0*pi,tarc,ds,n,l,d1,d2,d3,d4,c,gam,infi,findif,tran) !generate a parametrisation of the boundary. tarc is the array
 ! of angles which give equidistant points along the boundary
@@ -375,15 +374,15 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,d4,c,gam,p,t,b,tarc,m,x,infi,findif,tran,
     use mesh
     use functions
     implicit none
-    integer::n,m,i,nb,order
+    integer::n,m,i,nb,order,d
     complex *16, dimension(:,:)::tran
     real *8, dimension(:,:), allocatable::srcloc,targloc,targnorm
     real *8, dimension(:)::tarc,bound
     real *8, dimension(:),optional::sol
-    real *8, dimension(:), allocatable::srcval,psol,x,y,r,upx,upy,areas
+    real *8, dimension(:), allocatable::srcval,psol,x,y,r,upx,upy,areas,upx_test,upy_test,upx_corr,upy_corr
     complex *16, dimension(:), allocatable::pot,pot1,pot2
     complex *16, dimension(:,:),allocatable::grad1,grad2
-    real *8:: d1,d2,d3,d4,c,gam,pi,l,infi,findif
+    real *8:: d1,d2,d3,d4,c,gam,pi,l,infi,findif,mistake_x,mistake_y,edge
     real *8,dimension(2)::der
     real *8, dimension(:,:)::p
     integer, dimension(:,:)::t
@@ -418,7 +417,37 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,d4,c,gam,p,t,b,tarc,m,x,infi,findif,tran,
   enddo
 !  upx = real(pot1)
 !  upy = (-1)*imag(pot1)
-
+  !DEBUGGING
+  pot = 0
+  if (order==1)then
+    allocate(upx_test(m),upy_test(m),upx_corr(m),upy_corr(m))
+    d = 30
+    do i = 1,n
+        srcval(i) = areas(i)*gruptest_rhs(srcloc(1,i),srcloc(2,i),d)
+    enddo
+    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,2,-1,pot)
+    upx_test = (-1.0d0)*real(pot)
+    upy_test = imag(pot)
+    do i = 1,m
+        upx_corr(i) = gruptest_upx(targloc(1,i),targloc(2,i),d)
+        upy_corr(i) = gruptest_upy(targloc(1,i),targloc(2,i),d)
+    enddo
+    
+    mistake_x = rell2_notri(upx_test,upx_corr)
+    mistake_y = rell2_notri(upy_test,upy_corr)
+    open(1,file='files/upx_test.txt')
+    do i = 1,m
+        write(1,*) upx_test(i),upx_corr(i),upy_test(i),upy_corr(i)
+    enddo
+    close(1)
+    open(1,file='infiles/h.txt')
+        read(1,*) edge
+    close(1)
+    open(2,file='files/mistakes.txt',position='append')
+        write(2,*) edge,mistake_x, mistake_y
+    close(2)
+  endif
+   !DEBUGGING  
 end subroutine gradyoupee
 
 subroutine specder(xmin,xmax,n,input,deriv)  !takes spectral derivatives of order n of a function evaluated at n points.
@@ -659,14 +688,13 @@ subroutine fftgen(n,args,tran)
 
   !call findr n times, store array of values r(theta)
   do i=1,n
-    rarc(i) = findr(tarc(i),args)*cmplx(1.0D0,0.0D0,kind=16)
+    rarc(i) = abs(findr(tarc(i),args))*cmplx(1.0D0,0.0D0,kind=16)
   enddo
   !fourier transform r(theta) = sum(rhat*e^(ik*theta))   
   plan = fftw_plan_dft_1d(n,rarc,rhat,fftw_forward,fftw_estimate)
   call fftw_execute_dft(plan,rarc,rhat)
   call fftw_destroy_plan(plan)
   !change k array, put the second half before the first one
- 
   mid = n/2+1
   allocate(kf(n))
 

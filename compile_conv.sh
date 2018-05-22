@@ -17,7 +17,7 @@ cd infiles/$fold
 for d in */; do
     cp $d/* ../
     cd ../../
-    ./testing >/dev/null
+    ./testing #>/dev/null
     echo Mesh done
     cd infiles/$fold
 done

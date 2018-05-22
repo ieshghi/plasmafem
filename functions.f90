@@ -2,6 +2,51 @@ module functions
 implicit none
 contains
 
+  !DEBUGGING
+  function gruptest_rhs(x,y,d)
+  implicit none
+  real *8:: x,y,gruptest_rhs
+  integer :: d
+    
+  gruptest_rhs = (4*d**2*((x-1)**2+y**2)-4*d)*exp((-1.0d0)*d*((x-1)**2+y**2))
+  
+  endfunction gruptest_rhs
+
+  function gruptest_upx(x,y,d)
+  implicit none
+  real *8:: x,y,gruptest_upx
+  integer :: d
+    
+  gruptest_upx = (-2.0d0)*d*(x-1)*exp((-1.0d0)*d*((x-1)**2+y**2))
+  
+  endfunction gruptest_upx
+
+  function gruptest_upy(x,y,d)
+  implicit none
+  real *8:: x,y,gruptest_upy
+  integer :: d
+    
+  gruptest_upy = (-2.0d0)*d*y*exp((-1.0d0)*d*((x-1)**2+y**2))
+  
+  endfunction gruptest_upy
+  
+  function rell2_notri(num,ex)
+  implicit none
+  real *8,intent(in),dimension(:)::num,ex
+  real *8,allocatable::up(:),down(:),diff(:)
+  real *8::rell2_notri
+  integer::i
+  allocate(up(size(num)),down(size(num)),diff(size(num)))
+
+  diff = abs(num-ex)
+
+  rell2_notri = maxval(diff)/maxval(abs(ex))
+  endfunction rell2_notri
+
+
+  !DEBUGGING
+
+
   function rell2(num,ex,areas)
   implicit none
   real *8,intent(in),dimension(:)::num,ex,areas
