@@ -143,7 +143,7 @@ module mesh
   use functions
   implicit none
   integer::order
-  integer *8::n,nt,nv,nb,i,j,k,q,nedge
+  integer *8::n,nt,nv,nb,i,j,k,q
   integer, dimension(3)::tri
   integer, dimension(:,:)::t
   integer, dimension(:)::b
@@ -155,14 +155,13 @@ module mesh
   real *8, dimension(3,3)::a
   real *8::cgs,cx,cy,det,temp,c,xc,xc1,xc2,xc3
   real *8, dimension(2)::centroid, pt1,pt2,pt3
-  logical, dimension(:),allocatable::edgetri
   
   nt = size(t(:,1))
   nv = size(p(:,1))
   nb = size(b)
   n = nv !total number of elements will be the number of vertices
   allocate(fu(n))
-  allocate(val1(nt*9),col1(nt*9),row1(nt*9),val2(nt*9),col2(nt*9),row2(nt*9),x(n),edgetri(nt))! allocate sizes of arrays
+  allocate(val1(nt*9),col1(nt*9),row1(nt*9),val2(nt*9),col2(nt*9),row2(nt*9),x(n))! allocate sizes of arrays
   q = 1
   do i = 1,nt !loop to build the row and col vectors
     do j = 0,8
@@ -172,24 +171,7 @@ module mesh
     q = q+9
   end do
 
-  nedge = 0 !we want to count the number of edge triangles, to oversample them
-  do i=1,nt
-    tri = t(i,:)
-    k=0
-    do j=1,nb
-      if(t(i,1)==b(j) .or. t(i,2)==b(j) .or. t(i,3)==b(j))then
-        k = 1
-      endif
-    enddo
-    if(k==1)then
-      edgetri(i)=.true. !edgetri tells us which triangles are on the edge
-      nedge = nedge+1 !nedge tells us how many triangles are on the edge
-    else
-      edgetri(i)=.false.
-    endif
-  enddo
-
-  allocate(src_val(nt+(2)*nedge),src_loc(2,nt+(2)*nedge),areas(nt+2*nedge)) !we give our arrays space for oversampling
+  allocate(src_val(3*nt),src_loc(2,3*nt),areas(3*nt)) !we give our arrays space for oversampling
   do i = 1,n
     fu(i)=0
     src_val(i)=0 !initialise arrays to 0
@@ -232,48 +214,38 @@ module mesh
     fu(t(i,2)) = fu(t(i,2)) + det*0.5*temp/3.0
     fu(t(i,3)) = fu(t(i,3)) + det*0.5*temp/3.0
   
-    if(edgetri(i))then !this is where we oversample. We generate three triangles per triangle, and midpoint rule each of them.
-      centroid(1) = cx 
-      centroid(2) = cy
-      pt1(1) = (p(t(i,1),1)+p(t(i,2),1)+centroid(1))/3 !pt1 is the centroid of the first sub-triangle, pt2 etc.
-      pt1(2) = (p(t(i,1),2)+p(t(i,2),2)+centroid(2))/3
-      pt2(1) = (p(t(i,2),1)+p(t(i,3),1)+centroid(1))/3
-      pt2(2) = (p(t(i,2),2)+p(t(i,3),2)+centroid(2))/3
-      pt3(1) = (p(t(i,1),1)+p(t(i,3),1)+centroid(1))/3
-      pt3(2) = (p(t(i,1),2)+p(t(i,3),2)+centroid(2))/3
-      
-      src_loc(1,k) = pt1(1) !location of the triangle is its centroid
-      src_loc(2,k) = pt1(2)
-      if(order==1)then 
-          src_val(k) = gsrhs((cgs + guess(t(i,1)) + guess(t(i,2)))/3,pt1(1),pt1(2),c)*det*0.5/3 !midpoint rule the RHS at the centroid
-      elseif(order==2)then
-          src_val(k) = gsrhsx((cgs + guess(t(i,1)) + guess(t(i,2)))/3,pt1(1),pt1(2),c)*det*0.5/3
-      endif
-      areas(k) = det*0.5/3 !We also need the areas of the triangles, for error estimation. 
-      src_loc(1,k+1) = pt2(1)
-      src_loc(2,k+1) = pt2(2)
-      if(order==1)then
-          src_val(k+1) = gsrhs((cgs + guess(t(i,2)) + guess(t(i,3)))/3,pt2(1),pt2(2),c)*det*0.5/3
-      elseif(order==2)then
-          src_val(k+1) = gsrhsx((cgs + guess(t(i,2)) + guess(t(i,3)))/3,pt2(1),pt2(2),c)*det*0.5/3
-      endif
-      areas(k+1) = det*0.5/3
-      src_loc(1,k+2) = pt3(1)
-      src_loc(2,k+2) = pt3(2)
-      if(order==1)then
-          src_val(k+2) = gsrhs((cgs + guess(t(i,1)) + guess(t(i,3)))/3,pt3(1),pt3(2),c)*det*0.5/3
-      elseif(order==2)then
-          src_val(k+2) = gsrhsx((cgs + guess(t(i,1)) + guess(t(i,3)))/3,pt3(1),pt3(2),c)*det*0.5/3
-      endif
-      areas(k+2) = det*0.5/3
-      k = k+3    
-    else !If the triangle is not on the edge, we do the normal thing. No need to oversample.
-      src_loc(1,k) = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0)
-      src_loc(2,k) = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
-      src_val(k) = temp*det*0.5
-      areas(k) = det*0.5
-      k = k+1
+    pt1(1) = (p(t(i,1),1)+p(t(i,2),1))/2 !pt1 is the centroid of the first sub-triangle, pt2 etc.
+    pt1(2) = (p(t(i,1),2)+p(t(i,2),2))/2
+    pt2(1) = (p(t(i,2),1)+p(t(i,3),1))/2
+    pt2(2) = (p(t(i,2),2)+p(t(i,3),2))/2
+    pt3(1) = (p(t(i,1),1)+p(t(i,3),1))/2
+    pt3(2) = (p(t(i,1),2)+p(t(i,3),2))/2
+    
+    src_loc(1,k) = pt1(1) !location of the triangle is its centroid
+    src_loc(2,k) = pt1(2)
+    if(order==1)then 
+        src_val(k) = gsrhs((guess(t(i,1)) + guess(t(i,2)))/2,pt1(1),pt1(2),c)*det*0.5/3 !midpoint rule the RHS at the centroid
+    elseif(order==2)then
+        src_val(k) = gsrhsx((cgs + guess(t(i,1)) + guess(t(i,2)))/2,pt1(1),pt1(2),c)*det*0.5/3
     endif
+    areas(k) = det*0.5!We also need the areas of the triangles, for error estimation. 
+    src_loc(1,k+1) = pt2(1)
+    src_loc(2,k+1) = pt2(2)
+    if(order==1)then
+        src_val(k+1) = gsrhs((guess(t(i,2)) + guess(t(i,3)))/2,pt2(1),pt2(2),c)*det*0.5/3
+    elseif(order==2)then
+        src_val(k+1) = gsrhsx((guess(t(i,2)) + guess(t(i,3)))/2,pt2(1),pt2(2),c)*det*0.5/3
+    endif
+    areas(k+1) = det*0.5
+    src_loc(1,k+2) = pt3(1)
+    src_loc(2,k+2) = pt3(2)
+    if(order==1)then
+        src_val(k+2) = gsrhs((guess(t(i,1)) + guess(t(i,3)))/2,pt3(1),pt3(2),c)*det*0.5/3
+    elseif(order==2)then
+        src_val(k+2) = gsrhsx((guess(t(i,1)) + guess(t(i,3)))/2,pt3(1),pt3(2),c)*det*0.5/3
+    endif
+    areas(k+2) = det*0.5
+    k = k+3    
   end do
   do i = 1,size(col2)
     col2(i)=0
@@ -337,8 +309,6 @@ module mesh
   if(order==2)then
   k=1
   do i = 1,nt
-    cx = (p(t(i,1),1)+p(t(i,2),1)+p(t(i,3),1))/(3.0) !centroid position
-    cy = (p(t(i,1),2)+p(t(i,2),2)+p(t(i,3),2))/(3.0)
     do j =1,3 !use the same trick as in weirdder to compute the dot product of the basis functions
       a(j,1) = (p(t(i,j),1))
       a(j,2) = (p(t(i,j),2))
@@ -346,27 +316,21 @@ module mesh
     end do
     det = abs(threedet(a))
 
-  if(edgetri(i))then
-      pt1(1) = (p(t(i,1),1)+p(t(i,2),1)+cx)/3 !pt1 is the centroid of the first sub-triangle, pt2 etc.
-      pt1(2) = (p(t(i,1),2)+p(t(i,2),2)+cy)/3
-      pt2(1) = (p(t(i,2),1)+p(t(i,3),1)+cx)/3
-      pt2(2) = (p(t(i,2),2)+p(t(i,3),2)+cy)/3
-      pt3(1) = (p(t(i,1),1)+p(t(i,3),1)+cx)/3
-      pt3(2) = (p(t(i,1),2)+p(t(i,3),2)+cy)/3
+      pt1(1) = (p(t(i,1),1)+p(t(i,2),1))/2 !pt1 is the centroid of the first sub-triangle, pt2 etc.
+      pt1(2) = (p(t(i,1),2)+p(t(i,2),2))/2
+      pt2(1) = (p(t(i,2),1)+p(t(i,3),1))/2
+      pt2(2) = (p(t(i,2),2)+p(t(i,3),2))/2
+      pt3(1) = (p(t(i,1),1)+p(t(i,3),1))/2
+      pt3(2) = (p(t(i,1),2)+p(t(i,3),2))/2
 
-      xc = (x(t(i,1))+x(t(i,2))+x(t(i,3)))/3
-      xc1 = (x(t(i,1))+x(t(i,2))+xc)/3
-      xc2 = (xc+x(t(i,2))+x(t(i,3)))/3
-      xc3 = (x(t(i,1))+xc+x(t(i,3)))/3
+      xc1 = (x(t(i,1))+x(t(i,2)))/2
+      xc2 = (x(t(i,2))+x(t(i,3)))/2
+      xc3 = (x(t(i,1))+x(t(i,3)))/2
       
       src_val(k) = src_val(k) + stiff(pt1(1),pt1(2),0.0d0)*xc1*det*0.5/3
       src_val(k+1) = src_val(k+1) + stiff(pt2(1),pt2(2),0.0d0)*xc2*det*0.5/3
       src_val(k+2) = src_val(k+2) + stiff(pt3(1),pt3(2),0.0d0)*xc3*det*0.5/3
       k = k+3    
-  else
-    src_val(k) = src_val(k) + stiff(cx,cy,0.0d0)*(x(t(i,1))+x(t(i,2))+x(t(i,3)))/3*det*0.5
-    k = k+1  
-  endif
   enddo
   endif
   end subroutine gssolve

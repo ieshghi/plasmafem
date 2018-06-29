@@ -21,6 +21,7 @@ program testing
   n = size(sol)
   nb = size(b)
   nt = size(t(:,1))
+  write(*,*) nt,size(areas)
 
   !DEBUGGING
 
@@ -40,27 +41,27 @@ program testing
   !DEBUGGING
 
 
-!  allocate(ex(n),ey(n),exa(n),exx(n),eyy(n),exy(n),psi(n),psix(n),psixx(n),psiy(n),psiyy(n),psixy(n)) !store exact solutions, for comparison
-!
-!  do i=1,n
-!    x = p(i,1)
-!    y = p(i,2)
-!    
-!    psi(i) = sol(i)*sqrt(x)
-!    psix(i) = sqrt(x)*solx(i)+sol(i)/(2*sqrt(x))
-!    psiy(i) = sqrt(x)*soly(i)
-!    psixx(i) = solx(i)/sqrt(x) + sqrt(x)*solxx(i) - sol(i)/(4.0d0*x**(3.0d0/2.0d0))
-!    psixy(i) = sqrt(x)*solxy(i) + soly(i)/(2*sqrt(x))
-!    psiyy(i) = sqrt(x)*solyy(i)
-!
-!    exa(i) = exact(x,y,c,d1,d2,d3,d4)
-!    ex(i) = exactx(x,y,c,d1,d2,d3,d4)
-!    ey(i) = exacty(x,y,c,d1,d2,d3,d4)
-!    exx(i) = exactxx(x,y,c,d1,d2,d3,d4)
-!    exy(i) = exactxy(x,y,c,d1,d2,d3,d4)
-!    eyy(i) = exactyy(x,y,c,d1,d2,d3,d4)
-!
-!  enddo
+  allocate(ex(n),ey(n),exa(n),exx(n),eyy(n),exy(n),psi(n),psix(n),psixx(n),psiy(n),psiyy(n),psixy(n)) !store exact solutions, for comparison
+
+  do i=1,n
+    x = p(i,1)
+    y = p(i,2)
+    
+    psi(i) = sol(i)*sqrt(x)
+    psix(i) = sqrt(x)*solx(i)+sol(i)/(2*sqrt(x))
+    psiy(i) = sqrt(x)*soly(i)
+    psixx(i) = solx(i)/sqrt(x) + sqrt(x)*solxx(i) - sol(i)/(4.0d0*x**(3.0d0/2.0d0))
+    psixy(i) = sqrt(x)*solxy(i) + soly(i)/(2*sqrt(x))
+    psiyy(i) = sqrt(x)*solyy(i)
+
+    exa(i) = exact(x,y,c,d1,d2,d3,d4)
+    ex(i) = exactx(x,y,c,d1,d2,d3,d4)
+    ey(i) = exacty(x,y,c,d1,d2,d3,d4)
+    exx(i) = exactxx(x,y,c,d1,d2,d3,d4)
+    exy(i) = exactxy(x,y,c,d1,d2,d3,d4)
+    eyy(i) = exactyy(x,y,c,d1,d2,d3,d4)
+
+  enddo
   
   open(1,file='infiles/h.txt')
     read(1,*) edge
@@ -117,35 +118,35 @@ program testing
  
 !FOR DEBUGGING
   
-  !open(1,file='files/convxx.dat',position='append')
-  !  stdev = rell2(psixx,exx,areas)
-  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  !close(1) 
+  open(1,file='files/convxx.dat',position='append')
+    stdev = rell2(psixx,exx,areas)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  close(1) 
 
-  !open(1,file='files/convyy.dat',position='append')
-  !  stdev = rell2(psiyy,eyy,areas)
-  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  !close(1) 
+  open(1,file='files/convyy.dat',position='append')
+    stdev = rell2(psiyy,eyy,areas)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  close(1) 
 
-  !open(1,file='files/convxy.dat',position='append')
-  !  stdev = rell2(psixy,exy,areas)
-  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  !close(1) 
+  open(1,file='files/convxy.dat',position='append')
+    stdev = rell2(psixy,exy,areas)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  close(1) 
 
-  !open(1,file='files/convsol.dat',position='append')
-  !  stdev = rell2(psi,exa,areas)
-  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  !close(1) 
+  open(1,file='files/convsol.dat',position='append')
+    stdev = rell2(psi,exa,areas)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  close(1) 
 
-  !open(1,file='files/convx.dat',position='append')
-  !  stdev = rell2(psix,ex,areas)
-  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  !close(1) 
+  open(1,file='files/convx.dat',position='append')
+    stdev = rell2(psix,ex,areas)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  close(1) 
 
-  !open(1,file='files/convy.dat',position='append')
-  !  stdev = rell2(psiy,ey,areas)
-  !  write(1,*)  stdev,edge!int(sqrt(float(nt)))
-  !close(1) 
+  open(1,file='files/convy.dat',position='append')
+    stdev = rell2(psiy,ey,areas)
+    write(1,*)  stdev,edge!int(sqrt(float(nt)))
+  close(1) 
 
   !open(1,file='files/convex.dat',position='append')
   !  stdev = 0

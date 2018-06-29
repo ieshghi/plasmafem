@@ -166,8 +166,8 @@ def conver(slope=-2,der=0,offset=0):
 #  ax.loglog(c,c**(slope),label=='Expected')
   
   ax.plot((-1)*np.log10(c),np.log10(conv),'rx',label='Result')
-  ax.plot((-1)*np.log10(c),-slope*np.log10(c),label='Expected')
-
+  ax.plot((-1)*np.log10(c),-slope*np.log10(c)+offset,label='Expected')
+  
   ax.set_title('Linear elements convergence')
       
   ax.set_xlabel('-log10(h)')
