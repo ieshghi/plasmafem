@@ -4,6 +4,25 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.tri import Triangulation
 import scipy.sparse as spr
 
+def boundmesh():
+    a = np.loadtxt('files/upx.txt')
+    errx = a[:,0]
+    erry = a[:,1]
+    theta = a[:,2]*np.pi
+    r = a[:,3]
+    p = np.loadtxt('infiles/p.txt')
+    t = np.loadtxt('infiles/t.txt')-1
+    b = np.loadtxt('infiles/b.txt')-1
+
+    xloc = r*np.cos(theta)+1
+    yloc = r*np.sin(theta)
+    
+    bigloc = [errx>5e-3]
+    plt.scatter(xloc[bigloc],yloc[bigloc],c='r',marker='x')
+
+    q = Triangulation(p[:,0],p[:,1],triangles=t)
+    plt.triplot(q)
+
 def plottest(choice):
   t=np.loadtxt('./infiles/t.txt')
   p = np.loadtxt('./infiles/p.txt')

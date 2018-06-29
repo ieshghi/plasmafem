@@ -8,7 +8,7 @@ subroutine gssolve_wrapper(c,p,t,b,srcloc,answer,srcval,areas,bound,order,sol) !
   use mesh
   use functions
   implicit none
-  real *8,parameter::small = 1e-1 !When we use fixed point iteration (only for the initial solution), we want it to be to this
+  real *8,parameter::small = 1e-14 !When we use fixed point iteration (only for the initial solution), we want it to be to this
 !  accuracy
   real *8::error,c
   integer:: order,nt,i,n
@@ -418,35 +418,35 @@ subroutine gradyoupee(upx,upy,d1,d2,d3,d4,c,gam,p,t,b,tarc,m,x,infi,findif,tran,
 !  upx = real(pot1)
 !  upy = (-1)*imag(pot1)
   !DEBUGGING
-  pot = 0
-  if (order==1)then
-    allocate(upx_test(m),upy_test(m),upx_corr(m),upy_corr(m))
-    d = 30
-    do i = 1,n
-        srcval(i) = areas(i)*gruptest_rhs(srcloc(1,i),srcloc(2,i),d)
-    enddo
-    call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,2,-1,pot)
-    upx_test = (-1.0d0)*real(pot)
-    upy_test = imag(pot)
-    do i = 1,m
-        upx_corr(i) = gruptest_upx(targloc(1,i),targloc(2,i),d)
-        upy_corr(i) = gruptest_upy(targloc(1,i),targloc(2,i),d)
-    enddo
-    
-    mistake_x = rell2_notri(upx_test,upx_corr)
-    mistake_y = rell2_notri(upy_test,upy_corr)
-    open(1,file='files/upx_test.txt')
-    do i = 1,m
-        write(1,*) upx_test(i),upx_corr(i),upy_test(i),upy_corr(i)
-    enddo
-    close(1)
-    open(1,file='infiles/h.txt')
-        read(1,*) edge
-    close(1)
-    open(2,file='files/mistakes.txt',position='append')
-        write(2,*) edge,mistake_x, mistake_y
-    close(2)
-  endif
+ ! pot = 0
+ ! if (order==1)then
+ !   allocate(upx_test(m),upy_test(m),upx_corr(m),upy_corr(m))
+ !   d = 30
+ !   do i = 1,n
+ !       srcval(i) = areas(i)*gruptest_rhs(srcloc(1,i),srcloc(2,i),d)
+ !   enddo
+ !   call l2dacquadwrap(srcloc,srcval,targloc,targnorm,n,m,2,-1,pot)
+ !   upx_test = (-1.0d0)*real(pot)
+ !   upy_test = imag(pot)
+ !   do i = 1,m
+ !       upx_corr(i) = gruptest_upx(targloc(1,i),targloc(2,i),d)
+ !       upy_corr(i) = gruptest_upy(targloc(1,i),targloc(2,i),d)
+ !   enddo
+ !   
+ !   mistake_x = rell2_notri(upx_test,upx_corr)
+ !   mistake_y = rell2_notri(upy_test,upy_corr)
+ !   open(1,file='files/upx_test.txt')
+ !   do i = 1,m
+ !       write(1,*) upx_test(i),upx_corr(i),upy_test(i),upy_corr(i)
+ !   enddo
+ !   close(1)
+ !   open(1,file='infiles/h.txt')
+ !       read(1,*) edge
+ !   close(1)
+ !   open(2,file='files/mistakes.txt',position='append')
+ !       write(2,*) edge,mistake_x, mistake_y
+ !   close(2)
+ ! endif
    !DEBUGGING  
 end subroutine gradyoupee
 

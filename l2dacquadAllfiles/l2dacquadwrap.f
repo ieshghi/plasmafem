@@ -134,6 +134,8 @@ c
 c        h2 is approx 2*local boundary spacing.
 c
 c        Now locate QBX expansion centers
+!         centers(1,j) = targ_loc(1,j) - iside*3*rnx(j)*h2
+!         centers(2,j) = targ_loc(2,j) - iside*3*rny(j)*h2
          centers(1,j) = targ_loc(1,j) - iside*3*rnx(j)*h2
          centers(2,j) = targ_loc(2,j) - iside*3*rny(j)*h2
       enddo

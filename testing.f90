@@ -101,12 +101,12 @@ program testing
 
 
   open(1,file='files/convux.dat',position='append')
-    stdev = maxval(abs(ux-exux))
+    stdev = rell2(ux,exux,areas) 
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
   
   open(1,file='files/convuy.dat',position='append')
-    stdev = maxval(abs(uy-exuy))
+    stdev = rell2(uy,exuy,areas)
     write(1,*)  stdev,edge!int(sqrt(float(nt)))
   close(1) 
   open(1,file='files/ux.dat')
