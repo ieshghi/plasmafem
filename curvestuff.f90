@@ -288,8 +288,24 @@ subroutine solveyouh(gn,xin,yin,dx,dy,upx,upy,uh,n,ds) !solves linear system for
   real *8,dimension(n)::xin,yin,dx,dy,rnx,rny,upx,upy,uh,ones,rhs
   real *8,dimension(n,n)::lhs,gn
   real *8,dimension(2)::that
+  !real *8,dimension(2,n)::that
   complex *16,dimension(n)::pot,potn,sigma,mu
   complex *16,dimension(n,2)::grad  
+
+  !ones(:) = 1.0d0
+  !norm(:) = sqrt(dx**2+dy**2)
+  !rnx(:) = dy(:)/norm(:)
+  !rny(:) = -dx(:)/norm(:)
+  !that(1,:) = dx(:)/norm(:)
+  !that(2,:) = dy(:)/norm(:)
+  !mu(:) = cmplx(0,kind=16)
+  !sigma(:) = cmplx(upx(:)*that(1,:)+upy(:)*that(2,:),kind=16)
+  !lhs(:,:) = ds*gn(:,:)+ds**2
+  !do i = 1,n
+  !do j = 1,n
+  !      lhs(i,j) = lhs(i,j) +0.5d0
+  !enddo
+  !enddo
 
   do i = 1,n !in this loop, we build all the arrays necessary for l2dacquadwrapl to run
     ones(i) = 1.0d0 
